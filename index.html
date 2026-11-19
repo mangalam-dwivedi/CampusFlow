@@ -430,7 +430,7 @@ async function boot(){
 }
 async function submitAuth(event){
   event.preventDefault();if(!supabaseClient)return;
-  const form=new FormData(event.currentTarget),email=String(form.get('email')||''),password=String(form.get('password')||'');
+  const form=new FormData(event.target),email=String(form.get('email')||''),password=String(form.get('password')||'');
   authError='';
   try{
     const result=authMode==='signup'
