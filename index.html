@@ -197,7 +197,7 @@ function authView(){
   return cloudError?`<h1>Could not load your data</h1><p class="sub">${esc(cloudError)}</p><div class="row"><button class="p" data-act="retryload">Try again</button><button data-act="signout">Sign out</button></div>`:`<h1>Loading your CampusFlow data…</h1><p class="sub">Connecting to your account.</p>`;
 }
 function render(){
-  if(!dataReady){
+  if(bootError||!authSession||!dataReady){
     $('#nav').innerHTML='';$('#account').innerHTML='';
     $('#view').innerHTML=authView();return;
   }
