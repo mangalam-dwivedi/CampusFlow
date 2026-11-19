@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusFlow – AI Academic Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f5f6fb;--card:#fff;--ink:#1b1f3b;--mut:#6b7090;--line:#e4e6f2;--pri:#4f46e5;--pri2:#eef0ff;--ok:#0f8a5f;--okbg:#e3f6ee;--warn:#b45309;--warnbg:#fff3dc;--bad:#c0262d;--badbg:#fde8e9;--info:#1d5fb4;--infobg:#e4effd;--gray:#6b7090;--graybg:#eceef6}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1224;--card:#181c36;--ink:#e9ebff;--mut:#9aa0c8;--line:#2a2f55;--pri:#8b85ff;--pri2:#23274d;--ok:#4fd1a1;--okbg:#12342b;--warn:#f5b45c;--warnbg:#3a2c12;--bad:#ff8a8f;--badbg:#3d1a1d;--info:#7fb4ff;--infobg:#172a47;--gray:#9aa0c8;--graybg:#242848}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:10px 16px}
+.brand{font-weight:700;font-size:18px;white-space:nowrap}.brand span{color:var(--pri)}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}nav a{padding:7px 12px;border-radius:8px;color:var(--mut);text-decoration:none;font-weight:500;white-space:nowrap}nav a.on{background:var(--pri2);color:var(--pri)}nav a:hover{color:var(--ink)}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 18px}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:18px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font:inherit;transition:.15s}
+.big:hover{border-color:var(--pri);transform:translateY(-2px)}.big b{font-size:16px}.big small{color:var(--mut)}.big .e{font-size:26px}
+button,.btn{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 13px;font-weight:500}
+button:hover{border-color:var(--pri)}button.p{background:var(--pri);color:#fff;border-color:var(--pri)}button.ok{background:var(--ok);color:#fff;border-color:var(--ok)}button.d{color:var(--bad)}button.s{padding:4px 9px;font-size:13px}button:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 9px;width:100%}textarea{min-height:130px;resize:vertical}
+label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sp{flex:1}.mut{color:var(--mut)}.sm{font-size:13px}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.URGENT{background:var(--badbg);color:var(--bad)}.IMPORTANT{background:var(--warnbg);color:var(--warn)}.INFORMATIONAL{background:var(--infobg);color:var(--info)}.IRRELEVANT{background:var(--graybg);color:var(--gray)}
+.okt{background:var(--okbg);color:var(--ok)}.badt{background:var(--badbg);color:var(--bad)}.grayt{background:var(--graybg);color:var(--gray)}
+.li{padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}.li:last-child{border:0}
+.time{min-width:92px;color:var(--mut);font-variant-numeric:tabular-nums;font-size:13px}
+.banner{border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.b-warn{background:var(--warnbg);color:var(--warn)}.b-info{background:var(--infobg);color:var(--info)}.b-bad{background:var(--badbg);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;color:var(--mut);font-weight:500;font-size:12px;padding:4px 4px}td{padding:3px 3px;vertical-align:top}td input,td select{padding:4px 6px;font-size:13px}
+.scroll{overflow-x:auto}tr.conf td{background:var(--badbg)}
+.tt{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.cls{border-left:3px solid var(--pri);background:var(--pri2);padding:7px 9px;border-radius:7px;margin-bottom:7px;font-size:13px}.cls.lab{border-color:var(--ok)}.cls.x{opacity:.55;text-decoration:line-through}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:26px;text-align:center;color:var(--mut)}.drop.over{border-color:var(--pri);background:var(--pri2)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.thumbs img{height:70px;border-radius:7px;border:1px solid var(--line)}
+#modal{position:fixed;inset:0;background:rgba(10,12,30,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}#modal.on{display:flex}#modal>div{background:var(--card);border-radius:16px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow:auto}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal .h{font-size:12px;color:var(--mut);text-align:center}.cal .c{min-height:78px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px;font-size:12px;cursor:pointer;overflow:hidden}.cal .c.t{border-color:var(--pri);border-width:2px}.cal .c.o{opacity:.4}.cal .ch{display:block;border-radius:4px;padding:0 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}.msg{max-width:85%;padding:9px 13px;border-radius:14px;white-space:pre-wrap}.msg.u{align-self:flex-end;background:var(--pri);color:#fff}.msg.a{align-self:flex-start;background:var(--card);border:1px solid var(--line)}
+.diff{font-size:13px}.diff .add{color:var(--ok)}.diff .rem{color:var(--bad)}.diff .chg{color:var(--warn)}
+.conf-bar{display:inline-block;width:60px;height:6px;background:var(--graybg);border-radius:4px;vertical-align:middle;overflow:hidden}.conf-bar i{display:block;height:100%;background:var(--pri)}
+.empty{color:var(--mut);padding:10px 0}details summary{cursor:pointer;color:var(--pri)}pre{white-space:pre-wrap;background:var(--bg);padding:8px;border-radius:8px;font-size:12px;max-height:160px;overflow:auto}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:r .8s linear infinite;vertical-align:-2px}@keyframes r{to{transform:rotate(360deg)}}
+@media(max-width:600px){h1{font-size:21px}.brand{font-size:16px}}
+.cx{text-decoration:line-through;opacity:.6}
+</style>
+</head>
+<body>
+<header><div class="brand">Campus<span>Flow</span></div><nav id="nav"></nav><div id="account"></div></header>
+<main id="view"></main>
+<div id="modal"><div id="mbox"></div></div>
+<script>
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],JS_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parseISO=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const addDays=(s,n)=>{const d=parseISO(s);d.setDate(d.getDate()+n);return iso(d)};
+const TODAY=()=>iso(new Date());
+const dayOf=s=>JS_DAYS[parseISO(s).getDay()];
+const diffDays=(a,b)=>Math.round((parseISO(b)-parseISO(a))/864e5);
+const fmtDate=s=>s?parseISO(s).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}):'No date';
+const toMin=t=>{if(!t)return null;const[a,b]=t.split(':').map(Number);return a*60+(b||0)};
+const fromMin=m=>pad(Math.floor(m/60)%24)+':'+pad(m%60);
+function normTime(s){if(!s)return'';s=String(s).trim();const m=s.match(/(\d{1,2})(?:[:.](\d{2}))?\s*([ap]\.?m\.?)?/i);if(!m)return'';let h=+m[1];const mi=+(m[2]||0);const ap=m[3]&&m[3][0].toLowerCase();if(ap==='p'&&h<12)h+=12;if(ap==='a'&&h===12)h=0;if(h>23)return'';return pad(h)+':'+pad(mi)}
+function normDay(s){if(!s)return'';const k=String(s).trim().slice(0,3).toLowerCase();return DAYS.find(d=>d.toLowerCase()===k)||''}
+const PR=['URGENT','IMPORTANT','INFORMATIONAL','IRRELEVANT'];
+const PR_LABEL={URGENT:'🔴 Urgent',IMPORTANT:'🟠 Important',INFORMATIONAL:'🔵 Info',IRRELEVANT:'⚪ Irrelevant'};
+
+/* ---------- state ---------- */
+const KEY='campusflow.v1';
+const emptyState=()=>({tt:[],tasks:[],events:[],items:[],reminders:[],history:[],prefs:{URGENT:true,IMPORTANT:true,INFORMATIONAL:true,IRRELEVANT:false},hours:3,chat:[]});
+let S=emptyState();
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+let saveWarn=false;
+let supabaseClient=null,authSession=null,dataReady=false,authMode='login',authError='',bootError='',cloudError='',cloudTimer=null,cloudQueue=Promise.resolve(),authGeneration=0,previousUserId=null;
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));saveWarn=false}catch(e){saveWarn=true}
+  if(supabaseClient&&authSession&&dataReady){
+    clearTimeout(cloudTimer);
+    const status=$('#account-status');if(status)status.textContent='Saving…';
+    cloudTimer=setTimeout(()=>{
+      cloudQueue=cloudQueue.catch(()=>{}).then(persistCloud).catch(error=>{cloudError='Cloud save failed: '+(error.message||String(error));render()});
+    },500);
+  }
+}
+async function persistCloud(){
+  if(!supabaseClient||!authSession||!dataReady)return;
+  const userId=authSession.user.id,payload=JSON.parse(JSON.stringify(S));
+  const{error}=await supabaseClient.from('user_data').upsert({id:userId,data:payload,updated_at:new Date().toISOString()},{onConflict:'id'});
+  if(error){cloudError='Cloud save failed: '+error.message;render();return}
+  cloudError='';
+  const status=$('#account-status');if(status)status.textContent='Saved to cloud';
+}
+function hist(text){S.history.unshift({ts:Date.now(),text});S.history=S.history.slice(0,200)}
+
+/* ---------- AI ---------- */
+function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.search(/[\[{]/),b=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));if(a<0||b<0)throw new Error('AI gave no JSON');return JSON.parse(t.slice(a,b+1))}
+function blobData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({mimeType:blob.type||'image/jpeg',data:String(reader.result).split(',')[1]});reader.onerror=()=>reject(new Error('Could not read an uploaded image'));reader.readAsDataURL(blob)})}
+async function ai(input,blobs,json=true){
+  if(!supabaseClient||!authSession)throw new Error('Sign in before using AI.');
+  const{data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+  if(sessionError||!session)throw new Error('Your session expired. Sign in again to use AI.');
+  const images=blobs&&blobs.length?await Promise.all(blobs.map(blobData)):[];
+  const response=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({input,images})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||'AI request failed ('+response.status+').');
+  return json?parseJSON(result.text):result.text}
+function ttCompact(){return S.tt.map(e=>e.day+' '+e.start+'-'+e.end+' '+e.subject+(e.type==='Lab'?' (Lab)':'')+(e.room?' @'+e.room:'')).join('; ')||'(empty)'}
+
+/* ---------- file → images ---------- */
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Could not load PDF reader'));document.head.appendChild(s)})}
+function canvasOut(c){return new Promise(res=>c.toBlob(b=>{const t=document.createElement('canvas');const k=Math.min(1,420/c.width);t.width=c.width*k;t.height=c.height*k;t.getContext('2d').drawImage(c,0,0,t.width,t.height);res({blob:b,thumb:t.toDataURL('image/jpeg',.5)})},'image/jpeg',.82))}
+async function fileToImages(f){
+  if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){
+    if(!window.pdfjsLib){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
+    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;const out=[];
+    for(let p=1;p<=Math.min(pdf.numPages,4);p++){const pg=await pdf.getPage(p);const v=pg.getViewport({scale:1.6});const c=document.createElement('canvas');c.width=v.width;c.height=v.height;await pg.render({canvasContext:c.getContext('2d'),viewport:v}).promise;out.push(await canvasOut(c))}
+    return out}
+  const url=URL.createObjectURL(f);const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Bad image: '+f.name));i.src=url});
+  const k=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);return[await canvasOut(c)]}
+function parseWhatsApp(txt){
+  const re=/^\[?(\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[APap]\.?[Mm]\.?)?)\]?\s*[-–]?\s*([^:]{1,40}): (.*)$/;
+  const msgs=[];for(const line of txt.split(/\r?\n/)){const m=line.match(re);if(m)msgs.push({d:m[1],t:m[2],who:m[3],text:m[4]});else if(msgs.length&&line.trim())msgs[msgs.length-1].text+=' '+line.trim()}
+  return msgs}
+
+/* ---------- local fallback (text only, no AI) ---------- */
+function localAnalyze(text){
+  const items=[];const sents=text.split(/(?<=[.!?\n])\s+/).filter(x=>x.trim().length>8);
+  for(const s of sents){
+    const m=s.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i)||s.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})/i);
+    let date=null;if(m){const mo=MON.indexOf((isNaN(m[1])?m[1]:m[2]).slice(0,3).toLowerCase()),dd=+(isNaN(m[1])?m[2]:m[1]);const now=new Date();let y=now.getFullYear();let d=new Date(y,mo,dd);if(iso(d)<TODAY())d=new Date(y+1,mo,dd);date=iso(d)}
+    const low=s.toLowerCase();let cat='General',kind='info',pr='INFORMATIONAL';
+    if(/exam|test|viva/.test(low)){cat='Exam';kind='event';pr='IMPORTANT'}
+    else if(/assignment|submit|submission|deadline|last date/.test(low)){cat='Assignment';kind='task';pr='IMPORTANT'}
+    else if(/fee/.test(low)){cat='Fee';kind='task';pr='IMPORTANT'}
+    else if(/cancel/.test(low)){cat='Class cancellation';kind='event';pr='URGENT'}
+    else if(/holiday/.test(low)){cat='Holiday';kind='event'}
+    else if(!date)continue;
+    const sub=(low.match(/(math\w*|physics|chemistry|english|biology|computer\w*|dbms|os|networks?)/)||[])[0]||'';
+    items.push({kind,title:s.trim().slice(0,90),subject:sub?sub[0].toUpperCase()+sub.slice(1):'',category:cat,priority:pr,date,time:null,confidence:.45,summary:s.trim(),interpretation:'Basic keyword match (AI unavailable). Please verify.',change:null})}
+  return items}
+
+/* ---------- derived ---------- */
+function classesOn(d){const dn=dayOf(d);const cx=S.events.filter(e=>e.date===d&&e.category==='Class cancellation');
+  return S.tt.filter(e=>e.day===dn).sort((a,b)=>toMin(a.start)-toMin(b.start)).map(e=>({...e,cancelled:cx.some(c=>(c.subject||c.title||'').toLowerCase().includes(e.subject.toLowerCase().slice(0,4))||(c.title||'').toLowerCase().includes(e.subject.toLowerCase()))}))}
+const openTasks=()=>S.tasks.filter(t=>!t.done).sort((a,b)=>(a.deadline||'9').localeCompare(b.deadline||'9'));
+function computePlan(){
+  const need={Exam:6,Assignment:3,Lab:2};const t0=TODAY();
+  const its=openTasks().filter(t=>t.deadline&&t.deadline>=t0&&diffDays(t0,t.deadline)<=35).map(t=>({t,rem:need[t.category]||1.5}));
+  if(!its.length)return{days:{},short:[]};
+  const last=its.reduce((m,x)=>x.t.deadline>m?x.t.deadline:m,t0);const days={};
+  for(let d=t0;d<=last;d=addDays(d,1)){let cap=S.hours;const act=its.filter(x=>x.t.deadline>=d&&x.rem>0);
+    while(cap>0&&act.some(x=>x.rem>0)){act.sort((a,b)=>b.rem/(diffDays(d,b.t.deadline)+1)-a.rem/(diffDays(d,a.t.deadline)+1));const x=act.find(y=>y.rem>0);const h=Math.min(1,x.rem,cap);x.rem-=h;cap-=h;(days[d]=days[d]||[]);const ex=days[d].find(b=>b.id===x.t.id);if(ex)ex.h+=h;else days[d].push({id:x.t.id,title:x.t.title,subject:x.t.subject,cat:x.t.category,due:x.t.deadline,h})}}
+  return{days,short:its.filter(x=>x.rem>0.01).map(x=>x.t)}}
+function effPriority(it){let p=it.priority||'INFORMATIONAL';if(it.date&&['task','event'].includes(it.kind)){const n=diffDays(TODAY(),it.date);if(n>=0&&n<=1&&p!=='IRRELEVANT')p='URGENT'}return p}
+
+/* ---------- actions ---------- */
+function approveItem(id,edits){
+  const it=S.items.find(x=>x.id===id);if(!it)return;Object.assign(it,edits||{});const u={type:it.kind};
+  if(it.kind==='task'){const t={id:uid(),title:it.title,subject:it.subject,deadline:it.date,time:it.time,priority:it.priority==='URGENT'?'High':it.priority==='IMPORTANT'?'High':'Medium',category:it.category==='Exam'?'Exam':it.category==='Lab'?'Lab':it.category==='Assignment'?'Assignment':'Other',done:false,from:it.id};S.tasks.push(t);u.taskId=t.id;
+    if(it.date){const e={id:uid(),title:it.title,date:it.date,time:it.time,category:it.category,subject:it.subject,from:it.id};S.events.push(e);u.eventId=e.id;
+      const r=[];const dl=it.date;[[addDays(dl,-1),'Due tomorrow'],[dl,'Due today']].forEach(([d,tx])=>{if(d>=TODAY()){const x={id:uid(),date:d,text:tx+': '+it.title,taskId:t.id,dismissed:false};S.reminders.push(x);r.push(x.id)}});u.reminderIds=r}
+    hist('Added task "'+it.title+'"')}
+  else if(it.kind==='event'){const e={id:uid(),title:it.title,date:it.date,time:it.time,category:it.category,subject:it.subject,from:it.id};S.events.push(e);u.eventId=e.id;
+    if(it.date&&it.date>=TODAY()){const x={id:uid(),date:addDays(it.date,-1)<TODAY()?it.date:addDays(it.date,-1),text:it.title,eventId:e.id,dismissed:false};S.reminders.push(x);u.reminderIds=[x.id]}
+    hist('Added event "'+it.title+'"')}
+  else if(it.kind==='timetable_change'&&it.change){const c=it.change;const ix=findClass(c);u.before=JSON.parse(JSON.stringify(S.tt));
+    if(ix>=0){const e=S.tt[ix];const dur=toMin(e.end)-toMin(e.start);if(c.to){if(c.to.day)e.day=normDay(c.to.day)||e.day;if(c.to.start){e.start=normTime(c.to.start);e.end=c.to.end?normTime(c.to.end):fromMin(toMin(e.start)+dur)}if(c.to.room)e.room=c.to.room}}
+    else if(c.to&&c.to.day&&c.to.start){S.tt.push({id:uid(),subject:c.subject||it.subject||it.title,code:'',day:normDay(c.to.day),start:normTime(c.to.start),end:c.to.end?normTime(c.to.end):fromMin(toMin(normTime(c.to.start))+60),teacher:'',room:c.to.room||'',type:'Lecture'})}
+    hist('Timetable updated: '+(c.subject||it.title))}
+  else hist('Acknowledged: '+it.title);
+  it.status='approved';it.undo=u;it.decidedAt=Date.now();save()}
+function findClass(c){const k=(c.subject||'').toLowerCase();let ix=S.tt.findIndex(e=>e.subject.toLowerCase().includes(k)&&(!c.from||!c.from.day||e.day===normDay(c.from.day)));if(ix<0)ix=S.tt.findIndex(e=>k&&e.subject.toLowerCase().includes(k));return ix}
+function undoItem(id){const it=S.items.find(x=>x.id===id);if(!it||!it.undo)return;const u=it.undo;
+  if(u.taskId)S.tasks=S.tasks.filter(t=>t.id!==u.taskId);if(u.eventId)S.events=S.events.filter(e=>e.id!==u.eventId);if(u.reminderIds)S.reminders=S.reminders.filter(r=>!u.reminderIds.includes(r.id));if(u.before)S.tt=u.before;
+  it.status='undone';it.undo=null;hist('Undid AI action: '+(it.title||it.kind));save()}
+
+/* ---------- views ---------- */
+const VIEWS={dash,timetable:viewTT,notices:viewNotices,tasks:viewTasks,calendar:viewCal,plan:viewPlan,assistant:viewAsst,trust:viewTrust,whatsapp:viewWA,prefs:viewPrefs};
+const NAV=[['dash','Dashboard'],['timetable','Timetable'],['notices','Notices'],['tasks','Tasks'],['calendar','Calendar'],['plan','Study Plan'],['assistant','Assistant'],['trust','Trust Center'],['whatsapp','WhatsApp'],['prefs','Prefs']];
+let route='dash',scan={step:0,files:[],draft:[],busy:false,err:'',notes:''},nz={text:'',files:[],busy:false,err:'',kind:'Pasted text',open:null},cal={m:new Date().getMonth(),y:new Date().getFullYear(),sel:null},chatBusy=false;
+
+function authView(){
+  if(bootError)return `<h1>CampusFlow setup needed</h1><p class="sub">${esc(bootError)}</p><div class="card"><p>Configure <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> in your Vercel project settings, then redeploy.</p></div>`;
+  if(!authSession)return `<h1>${authMode==='signup'?'Create your account':'Sign in to CampusFlow'}</h1><p class="sub">Your timetable, tasks, and notices are saved privately to your account.</p>
+   <div class="card" style="max-width:440px"><form id="authForm"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required>
+   <label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="${authMode==='signup'?'new-password':'current-password'}" minlength="6" required>
+   ${authError?`<p style="color:var(--bad)">${esc(authError)}</p>`:''}
+   <div class="row" style="margin-top:14px"><button class="p" type="submit">${authMode==='signup'?'Create account':'Sign in'}</button><button type="button" data-act="authmode">${authMode==='signup'?'I already have an account':'Create account'}</button></div></form></div>`;
+  return cloudError?`<h1>Could not load your data</h1><p class="sub">${esc(cloudError)}</p><div class="row"><button class="p" data-act="retryload">Try again</button><button data-act="signout">Sign out</button></div>`:`<h1>Loading your CampusFlow data…</h1><p class="sub">Connecting to your account.</p>`;
+}
+function render(){
+  if(!dataReady){
+    $('#nav').innerHTML='';$('#account').innerHTML='';
+    $('#view').innerHTML=authView();return;
+  }
+  route=(location.hash.slice(1)||'dash');if(!VIEWS[route])route='dash';
+  $('#nav').innerHTML=NAV.map(([k,l])=>`<a href="#${k}" class="${k===route?'on':''}">${l}${k==='notices'&&pendingCount()?` <span class="tag IMPORTANT">${pendingCount()}</span>`:''}</a>`).join('');
+  $('#account').innerHTML=authSession?`<span id="account-status" class="mut sm">${esc(authSession.user.email||'Signed in')}</span> <button class="s" data-act="signout">Sign out</button>`:'';
+  $('#view').innerHTML=(saveWarn?'<div class="banner b-warn">Browser storage is full or blocked – changes may not persist.</div>':'')+(cloudError?`<div class="banner b-bad">${esc(cloudError)}</div>`:'')+VIEWS[route]()}
+const pendingCount=()=>S.items.filter(i=>i.status==='pending'&&S.prefs[effPriority(i)]!==false&&effPriority(i)!=='IRRELEVANT').length;
+const tag=p=>`<span class="tag ${p}">${PR_LABEL[p]}</span>`;
+const conf=c=>`<span class="conf-bar"><i style="width:${Math.round((c||0)*100)}%"></i></span> ${Math.round((c||0)*100)}%`;
+
+function dash(){
+  const t0=TODAY(),t1=addDays(t0,1);const pend=S.items.filter(i=>i.status==='pending'&&effPriority(i)!=='IRRELEVANT');
+  const rem=S.reminders.filter(r=>!r.dismissed&&r.date<=t0);
+  const up=openTasks().filter(t=>t.deadline&&t.deadline>=t0&&diffDays(t0,t.deadline)<=7);
+  const overdue=openTasks().filter(t=>t.deadline&&t.deadline<t0);
+  const cl=d=>classesOn(d).map(c=>`<div class="li"><div class="time">${c.start}–${c.end}</div><div class="sp"><b class="${c.cancelled?'cx':''}">${esc(c.subject)}</b> ${c.type==='Lab'?'<span class="tag okt">Lab</span>':''}${c.cancelled?' <span class="tag badt">Cancelled</span>':''}<div class="mut sm">${esc(c.room||'')} ${esc(c.teacher||'')}</div></div></div>`).join('')||'<div class="empty">No classes.</div>';
+  const plan=computePlan().days[t0]||[];const chg=S.items.filter(i=>i.kind==='timetable_change'&&i.status==='approved').slice(0,3);
+  const urgent=S.items.filter(i=>effPriority(i)==='URGENT'&&i.status!=='dismissed'&&i.status!=='undone').slice(0,4);
+  return `<h1>Hi 👋 ${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}</h1><p class="sub">AI does the typing. You stay in control.</p>
+  <div class="grid g4" style="margin-bottom:16px">
+   <button class="big" data-act="go" data-v="timetable" data-scan="1"><span class="e">📸</span><b>Scan Timetable</b><small>Photo, screenshot or PDF</small></button>
+   <button class="big" data-act="go" data-v="notices"><span class="e">📢</span><b>Analyze Notice</b><small>Text, image or WhatsApp</small></button>
+   <button class="big" data-act="go" data-v="notices" data-pdf="1"><span class="e">📄</span><b>Import PDF</b><small>Notices &amp; circulars</small></button>
+   <button class="big" data-act="go" data-v="plan"><span class="e">📅</span><b>Generate Study Plan</b><small>From your deadlines</small></button></div>
+  ${pend.length?`<div class="banner b-warn">🤖 <b>${pend.length}</b> AI suggestion${pend.length>1?'s':''} waiting for your approval. <button class="s p" data-act="go" data-v="notices">Review</button></div>`:''}
+  ${overdue.length?`<div class="banner b-bad">⚠️ ${overdue.length} overdue: ${overdue.map(t=>esc(t.title)).join(', ')}</div>`:''}
+  ${rem.map(r=>`<div class="banner b-info">⏰ ${esc(r.text)} <span class="sp"></span><button class="s" data-act="remdone" data-id="${r.id}">Dismiss</button></div>`).join('')}
+  ${!S.tt.length&&!S.tasks.length?`<div class="card" style="margin-bottom:14px"><h2>New here?</h2><p class="mut">Scan a timetable or paste a notice to begin – or load demo data to explore.</p><button class="p" data-act="demo">Load demo data</button></div>`:''}
+  <div class="grid g2">
+   <div class="card"><h2>Today · ${dayOf(t0)}</h2>${cl(t0)}</div>
+   <div class="card"><h2>Tomorrow · ${dayOf(t1)}</h2>${cl(t1)}</div>
+   <div class="card"><h2>Deadlines this week</h2>${up.map(t=>`<div class="li"><div class="time">${fmtDate(t.deadline)}</div><div class="sp"><b>${esc(t.title)}</b><div class="mut sm">${esc(t.subject||'')} · ${t.category}</div></div><span class="tag ${t.priority==='High'?'URGENT':'INFORMATIONAL'}">${t.priority}</span></div>`).join('')||'<div class="empty">Nothing due in 7 days 🎉</div>'}</div>
+   <div class="card"><h2>Pending assignments</h2>${openTasks().filter(t=>t.category==='Assignment').map(t=>`<div class="li"><input type="checkbox" style="width:auto" data-act="tdone" data-id="${t.id}"><div class="sp">${esc(t.title)}<div class="mut sm">${t.deadline?'Due '+fmtDate(t.deadline):''}</div></div></div>`).join('')||'<div class="empty">None pending.</div>'}</div>
+   <div class="card"><h2>Today's study plan</h2>${plan.map(b=>`<div class="li"><div class="time">${b.h}h</div><div class="sp"><b>${esc(b.title)}</b><div class="mut sm">due ${fmtDate(b.due)}</div></div></div>`).join('')||'<div class="empty">No study blocks. Add tasks with deadlines.</div>'}</div>
+   <div class="card"><h2>Urgent notices &amp; timetable changes</h2>${urgent.map(i=>`<div class="li"><div class="sp">${tag('URGENT')} <b>${esc(i.title)}</b><div class="mut sm">${i.status==='pending'?'Awaiting your approval':'Approved'}</div></div></div>`).join('')}${chg.map(i=>`<div class="li"><div class="sp">🔁 ${esc(i.title)}<div class="mut sm">Timetable updated ${new Date(i.decidedAt).toLocaleDateString()}</div></div></div>`).join('')}${!urgent.length&&!chg.length?'<div class="empty">All calm.</div>':''}</div>
+  </div>`}
+
+/* timetable */
+function conflictsIn(list){const bad=new Set();list.forEach((a,i)=>list.forEach((b,j)=>{if(i<j&&a.day===b.day&&toMin(a.start)<toMin(b.end)&&toMin(b.start)<toMin(a.end)){bad.add(i);bad.add(j)}}));return bad}
+function diffTT(oldL,newL){const o=oldL.map(x=>({...x,u:0})),out=[];const key=e=>(e.subject||'').toLowerCase().trim();
+  newL.forEach(n=>{let m=o.find(x=>!x.u&&key(x)===key(n)&&x.day===n.day&&x.start===n.start);
+    if(m){m.u=1;const ch=[];['end','room','teacher'].forEach(f=>{if((m[f]||'')!==(n[f]||''))ch.push(f+': '+(m[f]||'–')+' → '+(n[f]||'–'))});if(ch.length)out.push(['chg',n.subject+' ('+n.day+' '+n.start+'): '+ch.join(', ')])}
+    else{m=o.find(x=>!x.u&&key(x)===key(n)&&x.type===n.type);if(m){m.u=1;out.push(['chg',n.subject+' moved '+m.day+' '+m.start+' → '+n.day+' '+n.start])}else out.push(['add',n.subject+' '+n.day+' '+n.start+'–'+n.end])}});
+  o.filter(x=>!x.u).forEach(x=>out.push(['rem',x.subject+' '+x.day+' '+x.start+' removed']));return out}
+function viewTT(){
+  if(scan.step>0)return scanView();
+  const days=DAYS.slice(0,6);
+  return `<div class="row"><div><h1>Timetable</h1><p class="sub">${S.tt.length} classes</p></div><div class="sp"></div><button class="p" data-act="scanstart">📸 Scan timetable</button><button data-act="addclass">+ Add class</button></div>
+  ${S.tt.length?`<div class="tt">${days.map(d=>`<div class="card"><h3>${d}${d===dayOf(TODAY())?' · today':''}</h3>${S.tt.filter(e=>e.day===d).sort((a,b)=>toMin(a.start)-toMin(b.start)).map(e=>`<div class="cls ${e.type==='Lab'?'lab':''}" data-act="editclass" data-id="${e.id}" style="cursor:pointer"><b>${esc(e.subject)}</b> ${esc(e.code||'')}<br>${e.start}–${e.end}<br><span class="mut">${esc(e.room||'')} ${esc(e.teacher||'')} ${e.type==='Lab'?'· Lab':''}</span></div>`).join('')||'<div class="empty">–</div>'}</div>`).join('')}</div>`:'<div class="card empty">No timetable yet. Scan one or add classes manually.</div>'}`}
+function scanView(){
+  const s=scan;
+  if(s.step===1)return `<h1>Scan timetable</h1><p class="sub">Upload photos, screenshots or a PDF. AI reads them; you check before anything is saved.</p>
+   <div class="card"><div class="drop" id="drop1">📸 Drop files here or <label style="display:inline;color:var(--pri);cursor:pointer">browse<input type="file" id="f1" accept="image/*,application/pdf" multiple hidden></label></div>
+   <div class="thumbs">${s.files.map(f=>`<img src="${f.thumb}">`).join('')}</div>${s.err?`<p style="color:var(--bad)">${esc(s.err)}</p>`:''}
+   <div class="row" style="margin-top:12px"><button class="p" data-act="scanrun" ${s.files.length&&!s.busy?'':'disabled'}>${s.busy?'<span class="spin"></span> Reading…':'Extract timetable'}</button><button data-act="scancancel">Cancel</button></div></div>`;
+  const bad=conflictsIn(s.draft),df=S.tt.length?diffTT(S.tt,s.draft):[];
+  return `<h1>Check extracted timetable</h1><p class="sub">Fix mistakes below. Nothing is saved until you confirm.</p>
+  ${s.notes?`<div class="banner b-info">AI note: ${esc(s.notes)}</div>`:''}
+  ${bad.size?`<div class="banner b-bad">⚠️ ${bad.size} classes overlap (red rows). Fix or confirm anyway.</div>`:''}
+  <div class="card scroll"><table><tr><th>Subject</th><th>Code</th><th>Day</th><th>Start</th><th>End</th><th>Teacher</th><th>Room</th><th>Type</th><th></th></tr>
+  ${s.draft.map((e,i)=>`<tr class="${bad.has(i)?'conf':''}"><td><input data-b="${i}.subject" value="${esc(e.subject)}"></td><td><input style="width:70px" data-b="${i}.code" value="${esc(e.code)}"></td><td><select data-b="${i}.day">${DAYS.map(d=>`<option ${d===e.day?'selected':''}>${d}</option>`).join('')}</select></td><td><input style="width:75px" data-b="${i}.start" value="${e.start}"></td><td><input style="width:75px" data-b="${i}.end" value="${e.end}"></td><td><input data-b="${i}.teacher" value="${esc(e.teacher)}"></td><td><input style="width:80px" data-b="${i}.room" value="${esc(e.room)}"></td><td><select data-b="${i}.type">${['Lecture','Lab','Tutorial'].map(t=>`<option ${t===e.type?'selected':''}>${t}</option>`).join('')}</select></td><td><button class="s d" data-act="scanrm" data-i="${i}">✕</button></td></tr>`).join('')}</table>
+  <button class="s" data-act="scanadd" style="margin-top:8px">+ Row</button></div>
+  ${S.tt.length?`<div class="card diff" style="margin-top:12px"><h2>Changes vs current timetable</h2>${df.map(([k,t])=>`<div class="${k}">${k==='add'?'＋':k==='rem'?'－':'~'} ${esc(t)}</div>`).join('')||'<div class="empty">No differences.</div>'}</div>`:''}
+  <div class="row" style="margin-top:14px"><button class="ok" data-act="scanconfirm">✔ ${S.tt.length?'Apply changes':'Create timetable'}</button><button data-act="scancancel">Discard</button></div>`}
+
+/* notices */
+function viewNotices(){
+  const shown=S.items.filter(i=>i.kind!=='timetable_import');
+  const vis=shown.filter(i=>S.prefs[effPriority(i)]!==false),mut=shown.length-vis.length;
+  const pend=vis.filter(i=>i.status==='pending').sort((a,b)=>PR.indexOf(effPriority(a))-PR.indexOf(effPriority(b)));
+  const done=vis.filter(i=>i.status!=='pending').slice(0,30);
+  return `<h1>Notice Intelligence</h1><p class="sub">Paste, upload or import notices. AI extracts the facts – you approve what becomes a task, event or timetable change.</p>
+  <div class="card"><div class="row"><select id="nkind" style="width:auto">${['Pasted text','Screenshot / image','PDF notice','WhatsApp export'].map(k=>`<option ${nz.kind===k?'selected':''}>${k}</option>`).join('')}</select><button class="s" data-act="nzexample">Try example</button><label style="margin:0;display:inline"><span class="btn s">📎 Attach image / PDF / .txt</span><input type="file" id="nf" accept="image/*,application/pdf,.txt,text/plain" multiple hidden></label></div>
+  <textarea id="ntext" placeholder="Paste a notice or WhatsApp messages here…" style="margin-top:8px">${esc(nz.text)}</textarea>
+  <div class="thumbs">${nz.files.map(f=>`<img src="${f.thumb}">`).join('')}</div>${nz.err?`<p style="color:var(--bad)">${esc(nz.err)}</p>`:''}
+  <div class="row" style="margin-top:10px"><button class="p" data-act="nzrun" ${nz.busy?'disabled':''}>${nz.busy?'<span class="spin"></span> Analyzing…':'📢 Analyze'}</button><span class="mut sm">Need live WhatsApp? See the <a href="#whatsapp">WhatsApp page</a> for what is and isn’t possible.</span></div></div>
+  <h2 style="margin-top:20px">Awaiting your decision (${pend.length})</h2>${pend.map(itemCard).join('')||'<div class="empty">Nothing pending.</div>'}
+  ${mut?`<p class="mut sm">${mut} item(s) hidden by your notification preferences (see Prefs / Trust Center).</p>`:''}
+  <h2 style="margin-top:20px">Decided</h2>${done.map(itemCard).join('')||'<div class="empty">No history yet.</div>'}`}
+function itemCard(i){const p=effPriority(i);const ambiguous=i.confidence<.7||(!i.date&&['task','event'].includes(i.kind));
+  let chg='';if(i.change){const c=i.change,k=findClass(c);const old=k>=0?S.tt[k]:null;chg=`<div class="diff card" style="margin:8px 0;background:var(--bg)"><div class="rem">Old: ${old?esc(old.subject+' · '+old.day+' '+old.start+'–'+old.end+' '+(old.room||'')):(c.from?esc((c.from.day||'')+' '+(c.from.start||'')):'class not found in timetable')}</div><div class="add">New: ${c.to?esc((c.to.day||'')+' '+(c.to.start||'')+(c.to.end?'–'+c.to.end:'')+' '+(c.to.room||'')):'?'}</div></div>`}
+  return `<div class="card" style="margin-bottom:10px"><div class="row">${tag(p)} <span class="tag grayt">${esc(i.category)}</span>${ambiguous&&i.status==='pending'?'<span class="tag IMPORTANT">Needs your check</span>':''}<span class="sp"></span><span class="mut sm">${conf(i.confidence)}</span></div>
+  <h3 style="margin-top:8px">${esc(i.title)}</h3><div class="mut sm">${esc(i.summary||'')}</div>
+  <div class="sm" style="margin:6px 0">${i.subject?'📘 '+esc(i.subject)+' · ':''}${i.date?'📅 '+fmtDate(i.date):'📅 no date'}${i.time?' · '+i.time:''} · Suggested: <b>${{task:'Create task + reminders',event:'Add to calendar',timetable_change:'Update timetable',info:'Just keep for reference'}[i.kind]}</b></div>${chg}
+  ${i.status==='pending'?`<div class="row"><button class="ok s" data-act="${ambiguous?'itemedit':'itemok'}" data-id="${i.id}">${ambiguous?'Review & approve':'✔ Approve'}</button><button class="s" data-act="itemedit" data-id="${i.id}">Edit</button><button class="s d" data-act="itemno" data-id="${i.id}">Dismiss</button></div>`:`<div class="row"><span class="tag ${i.status==='approved'?'okt':'grayt'}">${i.status}</span>${i.undo?`<button class="s" data-act="itemundo" data-id="${i.id}">↩ Undo</button>`:''}</div>`}</div>`}
+
+/* tasks */
+function viewTasks(){const L=S.tasks.slice().sort((a,b)=>(a.done-b.done)||(a.deadline||'9').localeCompare(b.deadline||'9'));
+  return `<div class="row"><div><h1>Assignments &amp; tasks</h1><p class="sub">${openTasks().length} open</p></div><div class="sp"></div><button class="p" data-act="addtask">+ Add task</button></div>
+  <div class="card">${L.map(t=>`<div class="li"><input type="checkbox" style="width:auto;margin-top:5px" data-act="tdone" data-id="${t.id}" ${t.done?'checked':''}><div class="sp" style="${t.done?'opacity:.5;text-decoration:line-through':''}"><b>${esc(t.title)}</b><div class="mut sm">${esc(t.subject||'')} · ${t.category} · ${t.deadline?'Due '+fmtDate(t.deadline):'no deadline'}${t.from?' · 🤖 AI-created':''}</div></div><span class="tag ${t.priority==='High'?'URGENT':t.priority==='Medium'?'IMPORTANT':'INFORMATIONAL'}">${t.priority}</span><button class="s" data-act="edittask" data-id="${t.id}">Edit</button><button class="s d" data-act="deltask" data-id="${t.id}">✕</button></div>`).join('')||'<div class="empty">No tasks yet.</div>'}</div>`}
+
+/* calendar */
+function viewCal(){const{m,y}=cal;const first=new Date(y,m,1),start=(first.getDay()+6)%7,dim=new Date(y,m+1,0).getDate();const cells=[];
+  for(let i=0;i<42;i++){const d=new Date(y,m,1-start+i);cells.push(d)}
+  const ev=d=>[...S.events.filter(e=>e.date===d).map(e=>({t:e.title,c:e.category==='Exam'?'URGENT':e.category==='Assignment'?'IMPORTANT':'INFORMATIONAL'})),...S.tasks.filter(t=>t.deadline===d&&!S.events.some(e=>e.from&&e.from===t.from&&e.date===d)).map(t=>({t:t.title,c:'IMPORTANT'}))];
+  const sel=cal.sel;
+  return `<div class="row"><h1 class="sp">${first.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h1><button data-act="calprev">‹</button><button data-act="calnext">›</button></div>
+  <div class="cal">${DAYS.map(d=>`<div class="h">${d}</div>`).join('')}${cells.map(d=>{const s=iso(d);return `<div class="c ${s===TODAY()?'t':''} ${d.getMonth()!==m?'o':''}" data-act="calsel" data-d="${s}"><b>${d.getDate()}</b>${ev(s).slice(0,3).map(e=>`<span class="ch ${e.c}">${esc(e.t)}</span>`).join('')}</div>`}).join('')}</div>
+  ${sel?`<div class="card" style="margin-top:12px"><h2>${fmtDate(sel)}</h2>${classesOn(sel).map(c=>`<div class="li"><div class="time">${c.start}–${c.end}</div><div class="${c.cancelled?'cx':''}">${esc(c.subject)} ${c.cancelled?'<span class="tag badt">Cancelled</span>':''}</div></div>`).join('')}${ev(sel).map(e=>`<div class="li"><span class="tag ${e.c}">●</span> ${esc(e.t)}</div>`).join('')}</div>`:''}`}
+
+/* plan */
+function viewPlan(){const p=computePlan(),ds=Object.keys(p.days).sort();
+  return `<h1>Study planner</h1><p class="sub">Built automatically from your open tasks, exams and deadlines.</p>
+  <div class="card"><label>Hours you can study per day: <b id="hv">${S.hours}</b></label><input type="range" id="hours" min="1" max="8" step="0.5" value="${S.hours}"></div>
+  ${p.short.length?`<div class="banner b-warn">⚠️ Not enough time before deadline for: ${p.short.map(t=>esc(t.title)).join(', ')}. Increase daily hours or start sooner.</div>`:''}
+  ${ds.map(d=>`<div class="card" style="margin-top:10px"><h3>${fmtDate(d)}${d===TODAY()?' · today':''}</h3>${p.days[d].map(b=>`<div class="li"><div class="time">${b.h}h</div><div class="sp"><b>${esc(b.title)}</b> <span class="mut sm">${esc(b.subject||'')}</span></div><span class="mut sm">due ${fmtDate(b.due)}</span></div>`).join('')}</div>`).join('')||'<div class="card empty" style="margin-top:12px">No upcoming deadlines. Approve notices or add tasks, then your plan appears here.</div>'}`}
+
+/* assistant */
+function viewAsst(){const qs=['What do I have tomorrow?','What deadlines are coming this week?','Which assignments are pending?','What should I prioritize today?','Did any important notices arrive?','Show me changes to my timetable.','Make a study plan for my upcoming exams.'];
+  return `<h1>AI Assistant</h1><p class="sub">Answers only from your <b>confirmed</b> CampusFlow data.</p>
+  <div class="row" style="margin-bottom:12px">${qs.map(q=>`<button class="s" data-act="ask" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+  <div class="chat">${S.chat.map(m=>`<div class="msg ${m.r==='u'?'u':'a'}">${esc(m.t)}</div>`).join('')}${chatBusy?'<div class="msg a"><span class="spin"></span></div>':''}</div>
+  <div class="row"><input id="q" placeholder="Ask anything about your schedule…" style="flex:1"><button class="p" data-act="askbtn">Send</button><button data-act="clearchat">Clear</button></div>`}
+function context(){const t0=TODAY();return JSON.stringify({today:t0,weekday:dayOf(t0),timetable:S.tt.map(e=>({day:e.day,start:e.start,end:e.end,subject:e.subject,type:e.type,room:e.room})),tasks:S.tasks.map(t=>({title:t.title,subject:t.subject,deadline:t.deadline,category:t.category,priority:t.priority,done:t.done})),events:S.events.map(e=>({title:e.title,date:e.date,category:e.category})),approvedNotices:S.items.filter(i=>i.status==='approved').map(i=>({title:i.title,priority:effPriority(i),date:i.date})),pendingNoticesUnconfirmed:S.items.filter(i=>i.status==='pending').length,recentTimetableChanges:S.history.filter(h=>/Timetable/.test(h.text)).slice(0,8).map(h=>new Date(h.ts).toISOString().slice(0,10)+' '+h.text),studyPlanNext7Days:Object.entries(computePlan().days).slice(0,7)})}
+function localAnswer(q){q=q.toLowerCase();const t0=TODAY();
+  if(/tomorrow/.test(q)){const c=classesOn(addDays(t0,1)),d=openTasks().filter(t=>t.deadline===addDays(t0,1));return 'Tomorrow ('+dayOf(addDays(t0,1))+'):\n'+(c.map(x=>'• '+x.start+' '+x.subject+(x.cancelled?' (cancelled)':'')).join('\n')||'• No classes')+(d.length?'\nDue: '+d.map(x=>x.title).join(', '):'')}
+  if(/deadline|week/.test(q))return openTasks().filter(t=>t.deadline&&diffDays(t0,t.deadline)>=0&&diffDays(t0,t.deadline)<=7).map(t=>'• '+fmtDate(t.deadline)+' – '+t.title).join('\n')||'No deadlines in the next 7 days.';
+  if(/pending|assignment/.test(q))return openTasks().filter(t=>t.category==='Assignment').map(t=>'• '+t.title+(t.deadline?' (due '+fmtDate(t.deadline)+')':'')).join('\n')||'No pending assignments.';
+  if(/change/.test(q))return S.history.filter(h=>/Timetable/.test(h.text)).map(h=>'• '+h.text).join('\n')||'No timetable changes recorded.';
+  if(/notice/.test(q))return 'Pending notices: '+S.items.filter(i=>i.status==='pending').length;
+  return 'AI is unavailable here, so I can only answer basic questions: tomorrow, deadlines, pending assignments, changes.'}
+
+/* trust */
+function viewTrust(){const L=S.items.slice().sort((a,b)=>b.ts-a.ts);
+  return `<h1>AI Activity &amp; Trust Center</h1><p class="sub">Everything AI extracted, where it came from, how sure it was, and what you decided. You can undo AI-created actions.</p>
+  <div class="card"><h2>Notification preferences</h2><div class="row">${PR.map(p=>`<label style="display:inline-flex;gap:5px;align-items:center;margin:0"><input type="checkbox" style="width:auto" data-act="pref" data-p="${p}" ${S.prefs[p]!==false?'checked':''}>${PR_LABEL[p]}</label>`).join('')}</div></div>
+  <h2 style="margin-top:18px">AI activity (${L.length})</h2>
+  ${L.map(i=>`<div class="card" style="margin-bottom:10px"><div class="row"><b>${esc(i.title)}</b><span class="sp"></span><span class="tag ${i.status==='approved'?'okt':i.status==='pending'?'IMPORTANT':'grayt'}">${i.status}</span></div>
+   <div class="sm mut">${new Date(i.ts).toLocaleString()} · Source: ${esc(i.srcKind)} · Confidence ${conf(i.confidence)}</div>
+   <div class="sm" style="margin-top:6px"><b>AI understood:</b> ${esc(i.interpretation||i.summary||'')}</div>
+   <div class="sm"><b>Suggested action:</b> ${{task:'Create task & reminders',event:'Add calendar event',timetable_change:'Update timetable',info:'Keep for reference',timetable_import:'Import timetable'}[i.kind]||i.kind}</div>
+   <details><summary class="sm">Original source</summary>${i.srcThumb&&i.srcThumb.length?`<div class="thumbs">${i.srcThumb.map(t=>`<img src="${t}">`).join('')}</div>`:''}${i.srcText?`<pre>${esc(i.srcText)}</pre>`:''}</details>
+   ${i.undo?`<button class="s" style="margin-top:6px" data-act="itemundo" data-id="${i.id}">↩ Undo this action</button>`:''}</div>`).join('')||'<div class="empty">No AI activity yet.</div>'}
+  <h2 style="margin-top:18px">Change history</h2><div class="card">${S.history.map(h=>`<div class="li"><div class="time">${new Date(h.ts).toLocaleString()}</div><div>${esc(h.text)}</div></div>`).join('')||'<div class="empty">Nothing yet.</div>'}</div>
+  <p style="margin-top:14px"><button class="d" data-act="wipe">Erase all my CampusFlow data</button></p>`}
+
+function viewWA(){return `<h1>WhatsApp notices</h1><p class="sub">Honest version: what works, and what doesn’t.</p>
+  <div class="card"><h2>❌ Not possible (and we won’t fake it)</h2><p>CampusFlow cannot read your personal WhatsApp or silently monitor class groups. WhatsApp offers no authorized API for that – the Business Platform only covers business-owned numbers. Scraping or linking your account would break WhatsApp’s terms and risk a ban, so it’s not built.</p></div>
+  <div class="grid g2" style="margin-top:12px">
+   <div class="card"><h3>✅ 1. Export chat</h3><p class="sm">In WhatsApp: group → ⋮ → <i>Export chat</i> → <i>Without media</i>. Save the .txt, then attach it in Notices. CampusFlow parses messages and analyzes the latest 200.</p><a href="#notices"><button class="p s">Import export</button></a></div>
+   <div class="card"><h3>✅ 2. Screenshots</h3><p class="sm">Screenshot a notice, upload in Notices. AI reads the image.</p></div>
+   <div class="card"><h3>✅ 3. Copy &amp; paste</h3><p class="sm">Long-press message → Copy → paste into the analyzer. Fastest for single notices.</p></div>
+   <div class="card"><h3>⏳ 4. Forward to intake channel</h3><p class="sm">Would need a CampusFlow-owned WhatsApp Business number and a server. This demo page has no backend, so it is <b>not available</b> here. Planned design: forward → webhook → same analyzer → pending suggestions you approve.</p></div></div>
+  <div class="card" style="margin-top:12px"><h3>Privacy</h3><p class="sm">Pasted text and uploaded images are sent to Gemini through CampusFlow's server only when you press Analyze. Your app data is saved to your Supabase account and a browser copy; small source thumbnails may be retained with AI activity records. Remove sensitive names before importing group chats.</p></div>`}
+function viewPrefs(){return `<h1>Preferences</h1><div class="card"><p class="mut">Notification categories live in the <a href="#trust">Trust Center</a>. Reminders are shown in-app on your dashboard (no push notifications in this web demo).</p><button data-act="demo">Load demo data</button> <button class="d" data-act="wipe">Erase all data</button></div>`}
+
+/* ---------- modal ---------- */
+function modal(h){$('#mbox').innerHTML=h;$('#modal').classList.add('on')}
+function closeModal(){$('#modal').classList.remove('on')}
+function formModal(title,fields,onOk,extra){const f=fields.map(([k,l,v,t,o])=>`<label>${l}</label>${t==='select'?`<select name="${k}">${o.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select>`:`<input name="${k}" type="${t||'text'}" value="${esc(v)}">`}`).join('');
+  modal(`<h2>${title}</h2><form id="mf">${f}<div class="row" style="margin-top:14px"><button class="p" type="submit">Save</button><button type="button" data-act="mclose">Cancel</button>${extra||''}</div></form>`);
+  $('#mf').onsubmit=e=>{e.preventDefault();onOk(Object.fromEntries(new FormData(e.target)));closeModal();render()}}
+function itemEditModal(id,approve){const i=S.items.find(x=>x.id===id);
+  formModal(approve?'Review before approving':'Edit suggestion',[['title','Title',i.title],['subject','Subject',i.subject||''],['category','Category',i.category,'select',['Assignment','Exam','Lab','Class cancellation','Room change','Timetable change','Event','Holiday','Fee','Attendance','General']],['date','Date',i.date||'','date'],['time','Time (HH:MM)',i.time||''],['kind','Create as',i.kind,'select',['task','event','timetable_change','info']]],
+    v=>{const e={title:v.title,subject:v.subject,category:v.category,date:v.date||null,time:normTime(v.time)||null,kind:v.kind};if(approve)approveItem(id,e);else Object.assign(i,e),save()})}
+function classModal(id){const e=S.tt.find(x=>x.id===id)||{day:'Mon',start:'09:00',end:'10:00',type:'Lecture',subject:'',code:'',teacher:'',room:''};
+  formModal(id?'Edit class':'Add class',[['subject','Subject',e.subject],['code','Code',e.code||''],['day','Day',e.day,'select',DAYS],['start','Start',e.start],['end','End',e.end],['teacher','Teacher',e.teacher||''],['room','Room',e.room||''],['type','Type',e.type,'select',['Lecture','Lab','Tutorial']]],
+   v=>{v.start=normTime(v.start);v.end=normTime(v.end);if(id)Object.assign(e,v);else S.tt.push({id:uid(),...v});save()},id?`<button type="button" class="d" data-act="delclass" data-id="${id}">Delete</button>`:'')}
+function taskModal(id){const t=S.tasks.find(x=>x.id===id)||{title:'',subject:'',deadline:'',category:'Assignment',priority:'Medium'};
+  formModal(id?'Edit task':'Add task',[['title','Title',t.title],['subject','Subject',t.subject||''],['deadline','Deadline',t.deadline||'','date'],['category','Category',t.category,'select',['Assignment','Exam','Lab','Other']],['priority','Priority',t.priority,'select',['High','Medium','Low']]],
+   v=>{v.deadline=v.deadline||null;if(id)Object.assign(t,v);else S.tasks.push({id:uid(),done:false,...v});save()})}
+
+/* ---------- flows ---------- */
+async function addScanFiles(fl){scan.err='';scan.busy=true;render();try{for(const f of fl)for(const im of await fileToImages(f))scan.files.push(im)}catch(e){scan.err=e.message}scan.busy=false;render()}
+async function runScan(){scan.busy=true;scan.err='';render();
+  try{const r=await ai(`You read class timetables from images (photos, screenshots, PDF pages). Extract every class slot. Return ONLY JSON: {"entries":[{"subject":"","code":"","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","start":"HH:MM 24h","end":"HH:MM 24h","teacher":"","room":"","type":"Lecture|Lab|Tutorial"}],"notes":"anything unclear, unreadable or assumed"}. Use empty string for fields not visible. If a cell spans several periods, use its full start and end. Never invent data.`,scan.files.map(f=>f.blob));
+    scan.draft=(r.entries||[]).map(e=>({id:uid(),subject:e.subject||'',code:e.code||'',day:normDay(e.day)||'Mon',start:normTime(e.start),end:normTime(e.end),teacher:e.teacher||'',room:e.room||'',type:['Lab','Tutorial'].includes(e.type)?e.type:'Lecture'}));scan.notes=r.notes||'';
+    if(!scan.draft.length)throw new Error('No classes found. Try a clearer image.');scan.step=2}catch(e){scan.err=e.message||String(e)}
+  scan.busy=false;render()}
+async function runNotice(){
+  nz.text=$('#ntext')?$('#ntext').value:nz.text;nz.err='';
+  if(!nz.text.trim()&&!nz.files.length){nz.err='Add some text or a file first.';return render()}
+  nz.busy=true;render();const srcText=nz.text.trim(),kind=nz.kind;let items=[],usedAI=true;
+  let body=srcText;if(kind==='WhatsApp export'||/^\[?\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}/m.test(srcText)){const m=parseWhatsApp(srcText);if(m.length)body=m.slice(-200).map(x=>'['+x.d+' '+x.t+'] '+x.who+': '+x.text).join('\n')}
+  try{const r=await ai(`You analyze college notices and chats for a student. Today is ${TODAY()} (${dayOf(TODAY())}). Student's timetable: ${ttCompact()}.
+Source type: ${kind}. Notice content (text and/or attached images):\n"""\n${body.slice(0,12000)}\n"""
+Return ONLY JSON: {"items":[{"kind":"task|event|timetable_change|info","title":"short","subject":"","category":"Assignment|Exam|Lab|Class cancellation|Room change|Timetable change|Event|Holiday|Fee|Attendance|General|Casual","priority":"URGENT|IMPORTANT|INFORMATIONAL|IRRELEVANT","date":"YYYY-MM-DD or null","time":"HH:MM or null","confidence":0.0-1.0,"summary":"one line of what the notice says","interpretation":"how you read it and any assumption (e.g. year, which class)","change":null or {"subject":"","from":{"day":"Mon","start":"10:00","room":null},"to":{"day":"Tue","start":"14:00","end":null,"room":null}}}]}
+Rules: one item per distinct fact. task = something the student must submit/pay/do by a date. event = exam, holiday, one-off class cancellation, event, lab schedule (date-specific). timetable_change = permanent move/room change of a weekly class (fill change using the timetable above). Resolve relative dates to the next upcoming date. If date/class is ambiguous set date null and confidence below 0.6. Priority: URGENT = exam/deadline within 2 days, class cancellation, important schedule change; IMPORTANT = assignments, lab submissions, upcoming exams, fees; INFORMATIONAL = general news/events; IRRELEVANT = casual chat, memes, non-academic. Skip pure noise unless IRRELEVANT is useful. Never invent facts.`,nz.files.map(f=>f.blob));items=r.items||[]}
+  catch(e){if(nz.files.length){nz.err=e.message;nz.busy=false;return render()}usedAI=false;items=localAnalyze(srcText);nz.err='AI unavailable – used basic keyword matching. Review carefully.'}
+  const thumbs=nz.files.map(f=>f.thumb);const nid=uid();
+  items.forEach(x=>S.items.push({id:uid(),noticeId:nid,ts:Date.now(),srcKind:kind+(usedAI?'':' (local rules)'),srcText:srcText.slice(0,1500),srcThumb:thumbs,kind:['task','event','timetable_change','info'].includes(x.kind)?x.kind:'info',title:x.title||'Notice',subject:x.subject||'',category:x.category||'General',priority:PR.includes(x.priority)?x.priority:'INFORMATIONAL',date:/^\d{4}-\d\d-\d\d$/.test(x.date||'')?x.date:null,time:normTime(x.time)||null,confidence:+x.confidence||.5,summary:x.summary||'',interpretation:x.interpretation||'',change:x.change||null,status:'pending'}));
+  if(!items.length)nz.err=(nz.err?nz.err+' ':'')+'No actionable items found.';else{nz.text='';nz.files=[]}
+  nz.busy=false;save();render()}
+async function askAssistant(q){q=q.trim();if(!q||chatBusy)return;S.chat.push({r:'u',t:q});chatBusy=true;render();let a;
+  try{const turns=S.chat.slice(-8).map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}));
+    turns[turns.length-1].content='You are CampusFlow, a concise student assistant. Answer ONLY from this confirmed data (JSON). Pending/unapproved notices are not confirmed – mention only that they await approval. For study plans, give a short day-by-day plan using the tasks. Be brief, plain text, no markdown tables.\nDATA: '+context()+'\n\nQUESTION: '+q;
+    a=await ai(turns,null,false)}catch(e){a='AI unavailable: '+(e.message||'request failed')+'\n\n'+localAnswer(q)}
+  S.chat.push({r:'a',t:a});S.chat=S.chat.slice(-30);chatBusy=false;save();render()}
+function demo(){const T=TODAY();const e=(subject,code,day,start,end,teacher,room,type)=>({id:uid(),subject,code,day,start,end,teacher,room,type});
+  S.tt=[e('Mathematics','MA101','Mon','09:00','10:00','Dr. Rao','R-101','Lecture'),e('Physics','PH102','Mon','10:00','11:00','Dr. Iyer','R-204','Lecture'),e('Chemistry Lab','CH103L','Tue','11:00','13:00','Ms. Das','Lab 2','Lab'),e('Computer Science','CS104','Wed','10:00','11:00','Mr. Khan','R-305','Lecture'),e('Mathematics','MA101','Thu','09:00','10:00','Dr. Rao','R-101','Lecture'),e('Physics','PH102','Fri','14:00','15:00','Dr. Iyer','R-204','Lecture')];
+  const d=n=>addDays(T,n);S.tasks=[{id:uid(),title:'Physics lab record',subject:'Physics',deadline:d(3),category:'Lab',priority:'High',done:false},{id:uid(),title:'CS mid-term exam',subject:'Computer Science',deadline:d(9),category:'Exam',priority:'High',done:false}];
+  S.events=[{id:uid(),title:'CS mid-term exam',date:d(9),category:'Exam',subject:'Computer Science'}];hist('Demo data loaded');save()}
+const EXAMPLE='NOTICE: All students must submit their Maths assignment by 25 November.\nPhysics class on Monday (10 AM) is moved to Tuesday 2 PM, Room 204, from next week.\nChemistry lab on 21 November is cancelled.\nSemester fee last date is 30 November.\nAnnual fest this Saturday evening at the main ground!\nlol who has the memes folder 😂';
+
+let hadSession=false;
+async function activateSession(session){
+  const generation=++authGeneration;
+  authSession=session;authError='';cloudError='';
+  if(!session){
+    if(hadSession){S=emptyState();try{localStorage.removeItem(KEY)}catch(e){saveWarn=true}}
+    dataReady=true;render();return;
+  }
+  dataReady=false;render();
+  try{
+    const{data,error}=await supabaseClient.from('user_data').select('data').eq('id',session.user.id).maybeSingle();
+    if(error)throw error;
+    if(generation!==authGeneration)return;
+    if(data&&data.data)S=Object.assign(emptyState(),data.data);
+    else if(previousUserId)S=emptyState();
+    previousUserId=session.user.id;hadSession=true;dataReady=true;render();
+    if(!data)save();
+  }catch(error){
+    if(generation!==authGeneration)return;
+    cloudError='Unable to load your saved data: '+error.message;dataReady=false;render();
+  }
+}
+async function boot(){
+  try{
+    const response=await fetch('/api/config');
+    const config=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(config.error||'Server configuration is missing.');
+    if(!window.supabase)throw new Error('Supabase client library did not load. Check your internet connection.');
+    supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
+    supabaseClient.auth.onAuthStateChange((_event,session)=>{queueMicrotask(()=>activateSession(session))});
+    const{data,error}=await supabaseClient.auth.getSession();
+    if(error)throw error;
+    await activateSession(data.session);
+  }catch(error){bootError=error.message||String(error);dataReady=false;render()}
+}
+async function submitAuth(event){
+  event.preventDefault();if(!supabaseClient)return;
+  const form=new FormData(event.currentTarget),email=String(form.get('email')||''),password=String(form.get('password')||'');
+  authError='';
+  try{
+    const result=authMode==='signup'
+      ?await supabaseClient.auth.signUp({email,password})
+      :await supabaseClient.auth.signInWithPassword({email,password});
+    if(result.error)throw result.error;
+    if(authMode==='signup'&&!result.data.session)authError='Check your email for a confirmation link, then sign in.';
+  }catch(error){authError=error.message||String(error)}
+  render();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;const a=el.dataset.act,id=el.dataset.id;
+  if(a==='tdone'){const t=S.tasks.find(x=>x.id===id);t.done=el.checked;if(t.done)S.reminders.filter(r=>r.taskId===id).forEach(r=>r.dismissed=true);save();return render()}
+  if(a==='pref'){S.prefs[el.dataset.p]=el.checked;save();return}
+  ev.preventDefault&&0;
+  const A={
+   go(){if(el.dataset.scan){scan={step:1,files:[],draft:[],busy:false,err:'',notes:''}}if(el.dataset.pdf)nz.kind='PDF notice';location.hash=el.dataset.v;render()},
+   mclose:closeModal,demo(){demo();render()},remdone(){S.reminders.find(r=>r.id===id).dismissed=true;save();render()},
+   authmode(){authMode=authMode==='login'?'signup':'login';authError='';render()},
+   async signout(){
+     clearTimeout(cloudTimer);await cloudQueue.catch(()=>{});
+     try{
+       if(authSession&&dataReady){cloudError='';await persistCloud();if(cloudError){render();return}}
+       const{error}=await supabaseClient.auth.signOut();if(error)throw error;
+     }catch(error){cloudError='Could not sign out safely: '+error.message;render()}
+   },
+   retryload(){activateSession(authSession)},
+   scanstart(){scan={step:1,files:[],draft:[],busy:false,err:'',notes:''};render()},scancancel(){scan={step:0,files:[],draft:[],busy:false,err:'',notes:''};render()},scanrun:runScan,
+   scanrm(){scan.draft.splice(+el.dataset.i,1);render()},scanadd(){scan.draft.push({id:uid(),subject:'',code:'',day:'Mon',start:'09:00',end:'10:00',teacher:'',room:'',type:'Lecture'});render()},
+   scanconfirm(){const before=JSON.parse(JSON.stringify(S.tt));const n=scan.draft.filter(x=>x.subject&&x.start&&x.end);const cx=conflictsIn(n).size;S.tt=n;
+     S.items.push({id:uid(),ts:Date.now(),kind:'timetable_import',srcKind:'Timetable scan',srcText:'',srcThumb:scan.files.map(f=>f.thumb),title:'Timetable import ('+n.length+' classes)',category:'Timetable change',priority:'IMPORTANT',confidence:.8,interpretation:'AI extracted '+n.length+' class slots'+(cx?' ('+cx+' overlapping, confirmed by you)':'')+'. '+scan.notes,status:'approved',decidedAt:Date.now(),undo:{type:'tt',before}});
+     hist('Timetable '+(before.length?'updated':'created')+' from scan ('+n.length+' classes)');save();scan={step:0,files:[],draft:[],busy:false,err:'',notes:''};render()},
+   addclass(){classModal()},editclass(){classModal(id)},delclass(){S.tt=S.tt.filter(x=>x.id!==id);hist('Removed a class');save();closeModal();render()},
+   nzexample(){nz.text=EXAMPLE;render()},nzrun:runNotice,
+   itemok(){approveItem(id);render()},itemedit(){const i=S.items.find(x=>x.id===id);itemEditModal(id,i.status==='pending')},itemno(){const i=S.items.find(x=>x.id===id);i.status='dismissed';hist('Dismissed: '+i.title);save();render()},itemundo(){undoItem(id);render()},
+   addtask(){taskModal()},edittask(){taskModal(id)},deltask(){S.tasks=S.tasks.filter(t=>t.id!==id);save();render()},
+   calprev(){cal.m--;if(cal.m<0){cal.m=11;cal.y--}render()},calnext(){cal.m++;if(cal.m>11){cal.m=0;cal.y++}render()},calsel(){cal.sel=el.dataset.d;render()},
+   ask(){askAssistant(el.dataset.q)},askbtn(){askAssistant($('#q').value)},clearchat(){S.chat=[];save();render()},
+   wipe(){modal('<h2>Erase everything?</h2><p>This removes your timetable, tasks and AI history from this browser.</p><div class="row"><button class="d" data-act="wipe2">Yes, erase</button><button data-act="mclose">Cancel</button></div>')},
+   wipe2(){S={tt:[],tasks:[],events:[],items:[],reminders:[],history:[],prefs:{URGENT:true,IMPORTANT:true,INFORMATIONAL:true,IRRELEVANT:false},hours:3,chat:[]};save();closeModal();render()}};
+  if(A[a])A[a]()});
+document.addEventListener('change',async ev=>{const t=ev.target;
+  if(t.dataset.b){const[i,f]=t.dataset.b.split('.');let v=t.value;if(f==='start'||f==='end')v=normTime(v)||v;scan.draft[+i][f]=v;render()}
+  else if(t.id==='f1'){addScanFiles([...t.files])}
+  else if(t.id==='nkind'){nz.kind=t.value;nz.text=$('#ntext').value}
+  else if(t.id==='nf'){nz.err='';nz.text=$('#ntext').value;nz.busy=true;render();try{for(const f of t.files){if(/\.txt$/i.test(f.name)||f.type==='text/plain'){nz.text+=(nz.text?'\n':'')+await f.text();nz.kind='WhatsApp export'}else{for(const im of await fileToImages(f))nz.files.push(im);if(nz.kind==='Pasted text')nz.kind=f.type==='application/pdf'?'PDF notice':'Screenshot / image'}}}catch(e){nz.err=e.message}nz.busy=false;render()}
+  else if(t.id==='hours'){S.hours=+t.value;save();render()}});
+document.addEventListener('input',ev=>{if(ev.target.id==='hours'){const h=$('#hv');if(h)h.textContent=ev.target.value}});
+document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='q')askAssistant(ev.target.value)});
+document.addEventListener('submit',ev=>{if(ev.target.id==='authForm')submitAuth(ev)});
+document.addEventListener('dragover',ev=>{if(ev.target.closest&&ev.target.closest('#drop1')){ev.preventDefault();ev.target.closest('#drop1').classList.add('over')}});
+document.addEventListener('drop',ev=>{const d=ev.target.closest&&ev.target.closest('#drop1');if(d){ev.preventDefault();addScanFiles([...ev.dataTransfer.files])}});
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+window.addEventListener('hashchange',render);render();boot();
+</script>
+</body>
+</html>
