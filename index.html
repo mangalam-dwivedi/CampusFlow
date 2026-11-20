@@ -105,6 +105,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;colo
  .drop{padding:26px 14px}.banner{padding:11px 13px}
 }
 @keyframes sheet{from{transform:translateY(100%)}to{transform:none}}
+.credits{margin-top:26px;padding:20px;border-radius:var(--r);border:1px dashed color-mix(in srgb,var(--c1) 40%,var(--line));background:color-mix(in srgb,var(--c1) 6%,var(--card));text-align:center}.credits-t{font-weight:700;letter-spacing:.4px;margin-bottom:12px;background:var(--gradb);-webkit-background-clip:text;background-clip:text;color:transparent}.credits-g{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.creator{display:flex;align-items:center;gap:12px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px;box-shadow:var(--sh);min-width:230px;transition:.2s}.creator:hover{transform:translateY(-2px);box-shadow:var(--sh2)}.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--grad);color:#fff;font-weight:700;font-size:14px;flex-shrink:0;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+@media(max-width:760px){.creator{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -337,7 +339,11 @@ function dash(){
    <div class="card"><h2>Pending assignments</h2>${openTasks().filter(t=>t.category==='Assignment').map(t=>`<div class="li"><input type="checkbox" style="width:auto" data-act="tdone" data-id="${t.id}"><div class="sp">${esc(t.title)}<div class="mut sm">${t.deadline?'Due '+fmtDate(t.deadline):''}</div></div></div>`).join('')||'<div class="empty">None pending.</div>'}</div>
    <div class="card"><h2>Today's study plan</h2>${plan.map(b=>`<div class="li"><div class="time">${b.h}h</div><div class="sp"><b>${esc(b.title)}</b><div class="mut sm">due ${fmtDate(b.due)}</div></div></div>`).join('')||'<div class="empty">No study blocks. Add tasks with deadlines.</div>'}</div>
    <div class="card"><h2>Urgent notices &amp; timetable changes</h2>${urgent.map(i=>`<div class="li"><div class="sp">${tag('URGENT')} <b>${esc(i.title)}</b><div class="mut sm">${i.status==='pending'?'Awaiting your approval':'Approved'}</div></div></div>`).join('')}${chg.map(i=>`<div class="li"><div class="sp">🔁 ${esc(i.title)}<div class="mut sm">Timetable updated ${new Date(i.decidedAt).toLocaleDateString()}</div></div></div>`).join('')}${!urgent.length&&!chg.length?'<div class="empty">All calm.</div>':''}</div>
-  </div>`}
+  </div>
+  ${creditsHtml()}`}
+
+function creditsHtml(){const C=[['Mangalam','26U020060','M'],['Mehul Nathani','26U020055','MN']];
+  return `<div class="credits"><div class="credits-t">✨ Created by</div><div class="credits-g">${C.map(([n,id,i])=>`<div class="creator"><span class="av">${i}</span><div><b>${n}</b><div class="mut sm">Scholar No. ${id}</div></div></div>`).join('')}</div></div>`}
 
 /* timetable */
 function conflictsIn(list){const bad=new Set();list.forEach((a,i)=>list.forEach((b,j)=>{if(i<j&&a.day===b.day&&toMin(a.start)<toMin(b.end)&&toMin(b.start)<toMin(a.end)){bad.add(i);bad.add(j)}}));return bad}
