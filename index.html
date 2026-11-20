@@ -45,6 +45,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;colo
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--pri);border-radius:50%;animation:r .8s linear infinite;vertical-align:-2px}@keyframes r{to{transform:rotate(360deg)}}
 @media(max-width:600px){h1{font-size:21px}.brand{font-size:16px}}
 .cx{text-decoration:line-through;opacity:.6}
+.bar{position:relative;height:10px;background:var(--graybg);border-radius:6px;margin:6px 0 10px}.bar i{display:block;height:100%;border-radius:6px;background:var(--ok)}.bar.warn i{background:var(--warn)}.bar.danger i{background:var(--bad)}.bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+button.s.bad{background:var(--bad);color:#fff;border-color:var(--bad)}button.s.on{background:var(--graybg)}
 </style>
 </head>
 <body>
@@ -75,11 +77,11 @@ const PR_LABEL={URGENT:'🔴 Urgent',IMPORTANT:'🟠 Important',INFORMATIONAL:'�
 
 /* ---------- state ---------- */
 const KEY='campusflow.v1';
-const emptyState=()=>({tt:[],tasks:[],events:[],items:[],reminders:[],history:[],prefs:{URGENT:true,IMPORTANT:true,INFORMATIONAL:true,IRRELEVANT:false},hours:3,chat:[]});
+const emptyState=()=>({tt:[],tasks:[],events:[],items:[],reminders:[],history:[],prefs:{URGENT:true,IMPORTANT:true,INFORMATIONAL:true,IRRELEVANT:false},hours:3,chat:[],att:{rec:{},base:{},target:75}});
 let S=emptyState();
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 let saveWarn=false;
-let supabaseClient=null,authSession=null,dataReady=false,authMode='login',authError='',bootError='',cloudError='',cloudTimer=null,cloudQueue=Promise.resolve(),authGeneration=0,previousUserId=null;
+let supabaseClient=null,authSession=null,dataReady=false,bootError='',cloudError='',cloudTimer=null,cloudQueue=Promise.resolve(),authGeneration=0,previousUserId=null;
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(S));saveWarn=false}catch(e){saveWarn=true}
   if(supabaseClient&&authSession&&dataReady){
@@ -104,9 +106,9 @@ function hist(text){S.history.unshift({ts:Date.now(),text});S.history=S.history.
 function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.search(/[\[{]/),b=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));if(a<0||b<0)throw new Error('AI gave no JSON');return JSON.parse(t.slice(a,b+1))}
 function blobData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({mimeType:blob.type||'image/jpeg',data:String(reader.result).split(',')[1]});reader.onerror=()=>reject(new Error('Could not read an uploaded image'));reader.readAsDataURL(blob)})}
 async function ai(input,blobs,json=true){
-  if(!supabaseClient||!authSession)throw new Error('Sign in before using AI.');
+  if(!supabaseClient||!authSession)throw new Error('The demo session is not ready yet. Reload the page and try again.');
   const{data:{session},error:sessionError}=await supabaseClient.auth.getSession();
-  if(sessionError||!session)throw new Error('Your session expired. Sign in again to use AI.');
+  if(sessionError||!session)throw new Error('Your demo session expired. Reload the page to start a new one.');
   const images=blobs&&blobs.length?await Promise.all(blobs.map(blobData)):[];
   const response=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({input,images})});
   const result=await response.json().catch(()=>({}));
@@ -183,27 +185,21 @@ function undoItem(id){const it=S.items.find(x=>x.id===id);if(!it||!it.undo)retur
   it.status='undone';it.undo=null;hist('Undid AI action: '+(it.title||it.kind));save()}
 
 /* ---------- views ---------- */
-const VIEWS={dash,timetable:viewTT,notices:viewNotices,tasks:viewTasks,calendar:viewCal,plan:viewPlan,assistant:viewAsst,trust:viewTrust,whatsapp:viewWA,prefs:viewPrefs};
-const NAV=[['dash','Dashboard'],['timetable','Timetable'],['notices','Notices'],['tasks','Tasks'],['calendar','Calendar'],['plan','Study Plan'],['assistant','Assistant'],['trust','Trust Center'],['whatsapp','WhatsApp'],['prefs','Prefs']];
+const VIEWS={dash,timetable:viewTT,attendance:viewAtt,notices:viewNotices,tasks:viewTasks,calendar:viewCal,plan:viewPlan,assistant:viewAsst,trust:viewTrust,whatsapp:viewWA,prefs:viewPrefs};
+const NAV=[['dash','Dashboard'],['timetable','Timetable'],['attendance','Attendance'],['notices','Notices'],['tasks','Tasks'],['calendar','Calendar'],['plan','Study Plan'],['assistant','Assistant'],['trust','Trust Center'],['whatsapp','WhatsApp'],['prefs','Prefs']];
 let route='dash',scan={step:0,files:[],draft:[],busy:false,err:'',notes:''},nz={text:'',files:[],busy:false,err:'',kind:'Pasted text',open:null},cal={m:new Date().getMonth(),y:new Date().getFullYear(),sel:null},chatBusy=false;
 
-function authView(){
-  if(bootError)return `<h1>CampusFlow setup needed</h1><p class="sub">${esc(bootError)}</p><div class="card"><p>Configure <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> in your Vercel project settings, then redeploy.</p></div>`;
-  if(!authSession)return `<h1>${authMode==='signup'?'Create your account':'Sign in to CampusFlow'}</h1><p class="sub">Your timetable, tasks, and notices are saved privately to your account.</p>
-   <div class="card" style="max-width:440px"><form id="authForm"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required>
-   <label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="${authMode==='signup'?'new-password':'current-password'}" minlength="6" required>
-   ${authError?`<p style="color:var(--bad)">${esc(authError)}</p>`:''}
-   <div class="row" style="margin-top:14px"><button class="p" type="submit">${authMode==='signup'?'Create account':'Sign in'}</button><button type="button" data-act="authmode">${authMode==='signup'?'I already have an account':'Create account'}</button></div></form></div>`;
-  return cloudError?`<h1>Could not load your data</h1><p class="sub">${esc(cloudError)}</p><div class="row"><button class="p" data-act="retryload">Try again</button><button data-act="signout">Sign out</button></div>`:`<h1>Loading your CampusFlow data…</h1><p class="sub">Connecting to your account.</p>`;
-}
 function render(){
-  if(bootError||!authSession||!dataReady){
+  if(bootError||!dataReady){
     $('#nav').innerHTML='';$('#account').innerHTML='';
-    $('#view').innerHTML=authView();return;
+    $('#view').innerHTML=bootError
+      ?`<h1>CampusFlow setup needed</h1><p class="sub">${esc(bootError)}</p>`
+      :'<h1>Loading CampusFlow…</h1>';
+    return;
   }
   route=(location.hash.slice(1)||'dash');if(!VIEWS[route])route='dash';
   $('#nav').innerHTML=NAV.map(([k,l])=>`<a href="#${k}" class="${k===route?'on':''}">${l}${k==='notices'&&pendingCount()?` <span class="tag IMPORTANT">${pendingCount()}</span>`:''}</a>`).join('');
-  $('#account').innerHTML=authSession?`<span id="account-status" class="mut sm">${esc(authSession.user.email||'Signed in')}</span> <button class="s" data-act="signout">Sign out</button>`:'';
+  $('#account').innerHTML='<span id="account-status" class="mut sm">Demo mode</span>';
   $('#view').innerHTML=(saveWarn?'<div class="banner b-warn">Browser storage is full or blocked – changes may not persist.</div>':'')+(cloudError?`<div class="banner b-bad">${esc(cloudError)}</div>`:'')+VIEWS[route]()}
 const pendingCount=()=>S.items.filter(i=>i.status==='pending'&&S.prefs[effPriority(i)]!==false&&effPriority(i)!=='IRRELEVANT').length;
 const tag=p=>`<span class="tag ${p}">${PR_LABEL[p]}</span>`;
@@ -222,12 +218,15 @@ function dash(){
    <button class="big" data-act="go" data-v="timetable" data-scan="1"><span class="e">📸</span><b>Scan Timetable</b><small>Photo, screenshot or PDF</small></button>
    <button class="big" data-act="go" data-v="notices"><span class="e">📢</span><b>Analyze Notice</b><small>Text, image or WhatsApp</small></button>
    <button class="big" data-act="go" data-v="notices" data-pdf="1"><span class="e">📄</span><b>Import PDF</b><small>Notices &amp; circulars</small></button>
-   <button class="big" data-act="go" data-v="plan"><span class="e">📅</span><b>Generate Study Plan</b><small>From your deadlines</small></button></div>
+   <button class="big" data-act="go" data-v="plan"><span class="e">📅</span><b>Generate Study Plan</b><small>From your deadlines</small></button>
+   <button class="big" data-act="go" data-v="attendance"><span class="e">📝</span><b>Mark Attendance</b><small>Stay above 75%</small></button></div>
   ${pend.length?`<div class="banner b-warn">🤖 <b>${pend.length}</b> AI suggestion${pend.length>1?'s':''} waiting for your approval. <button class="s p" data-act="go" data-v="notices">Review</button></div>`:''}
+  ${attBanner()}
   ${overdue.length?`<div class="banner b-bad">⚠️ ${overdue.length} overdue: ${overdue.map(t=>esc(t.title)).join(', ')}</div>`:''}
   ${rem.map(r=>`<div class="banner b-info">⏰ ${esc(r.text)} <span class="sp"></span><button class="s" data-act="remdone" data-id="${r.id}">Dismiss</button></div>`).join('')}
   ${!S.tt.length&&!S.tasks.length?`<div class="card" style="margin-bottom:14px"><h2>New here?</h2><p class="mut">Scan a timetable or paste a notice to begin – or load demo data to explore.</p><button class="p" data-act="demo">Load demo data</button></div>`:''}
   <div class="grid g2">
+   ${attCard()}
    <div class="card"><h2>Today · ${dayOf(t0)}</h2>${cl(t0)}</div>
    <div class="card"><h2>Tomorrow · ${dayOf(t1)}</h2>${cl(t1)}</div>
    <div class="card"><h2>Deadlines this week</h2>${up.map(t=>`<div class="li"><div class="time">${fmtDate(t.deadline)}</div><div class="sp"><b>${esc(t.title)}</b><div class="mut sm">${esc(t.subject||'')} · ${t.category}</div></div><span class="tag ${t.priority==='High'?'URGENT':'INFORMATIONAL'}">${t.priority}</span></div>`).join('')||'<div class="empty">Nothing due in 7 days 🎉</div>'}</div>
@@ -306,14 +305,57 @@ function viewPlan(){const p=computePlan(),ds=Object.keys(p.days).sort();
   ${p.short.length?`<div class="banner b-warn">⚠️ Not enough time before deadline for: ${p.short.map(t=>esc(t.title)).join(', ')}. Increase daily hours or start sooner.</div>`:''}
   ${ds.map(d=>`<div class="card" style="margin-top:10px"><h3>${fmtDate(d)}${d===TODAY()?' · today':''}</h3>${p.days[d].map(b=>`<div class="li"><div class="time">${b.h}h</div><div class="sp"><b>${esc(b.title)}</b> <span class="mut sm">${esc(b.subject||'')}</span></div><span class="mut sm">due ${fmtDate(b.due)}</span></div>`).join('')}</div>`).join('')||'<div class="card empty" style="margin-top:12px">No upcoming deadlines. Approve notices or add tasks, then your plan appears here.</div>'}`}
 
+/* ---------- attendance ---------- */
+let attDate=TODAY();
+const subjKey=s=>(s||'').toLowerCase().trim();
+const dayClasses=d=>S.tt.filter(e=>e.day===dayOf(d)).sort((a,b)=>toMin(a.start)-toMin(b.start));
+const attKey=(d,c)=>d+'|'+subjKey(c.subject)+'|'+c.start;
+const attRec=(d,c)=>(S.att.rec||{})[attKey(d,c)];
+function attStats(){
+  const T=(S.att.target||75)/100,m=new Map();
+  const ensure=n=>{const k=subjKey(n);if(!k)return null;if(!m.has(k))m.set(k,{name:n,k,a:0,t:0,wk:0});return m.get(k)};
+  S.tt.forEach(e=>{const x=ensure(e.subject);if(x)x.wk++});
+  Object.entries(S.att.base||{}).forEach(([k,b])=>{const x=m.get(k)||ensure(k);if(x){x.a+=b.a||0;x.t+=b.t||0}});
+  Object.values(S.att.rec||{}).forEach(r=>{if(r.v==='N')return;const x=ensure(r.s);if(!x)return;x.t++;if(r.v==='P')x.a++});
+  return[...m.values()].map(x=>{const pct=x.t?x.a/x.t:null;let status='none',skip=0,need=0;
+    if(x.t){if(pct+1e-9<T){status='danger';need=Math.ceil((T*x.t-x.a)/(1-T)-1e-9)}else{skip=Math.max(0,Math.floor(x.a/T-x.t+1e-9));status=skip<=1?'warn':'safe'}}
+    return{...x,pct,status,skip,need,weeks:x.wk?Math.ceil(need/x.wk):null}}).sort((p,q)=>(p.pct==null?2:p.pct)-(q.pct==null?2:q.pct))}
+function markAtt(d,i,v){const c=dayClasses(d)[i];if(!c)return;const k=attKey(d,c);S.att.rec=S.att.rec||{};if(S.att.rec[k]&&S.att.rec[k].v===v)delete S.att.rec[k];else S.att.rec[k]={s:c.subject,d,v};save()}
+const attBadge=x=>({danger:'🚨 Below target',warn:'⚠️ Borderline',safe:'✅ Safe',none:'No data'}[x.status]);
+function attAdvice(x){const T=S.att.target||75;if(x.status==='none')return'Mark classes to start tracking.';
+  if(x.status==='danger')return`Attend the next ${x.need} class${x.need>1?'es':''} in a row to reach ${T}%`+(x.weeks?` (about ${x.weeks} week${x.weeks>1?'s':''} of classes)`:'')+'. Do not skip.';
+  return x.skip?`You can skip ${x.skip} more class${x.skip>1?'es':''} and stay at ${T}% or above.`:'Exactly at the limit – do not skip the next class.'}
+function attSummaryText(){const L=attStats();if(!L.length)return'No attendance data yet. Mark classes in Attendance.';return L.map(x=>'• '+x.name+': '+(x.pct==null?'no data':(x.pct*100).toFixed(1)+'% ('+x.a+'/'+x.t+') – '+attAdvice(x))).join('\n')}
+function attRows(d,compact){const cl=dayClasses(d),cx=classesOn(d),st=Object.fromEntries(attStats().map(x=>[x.k,x]));
+  return cl.map((c,i)=>{const r=attRec(d,c),x=st[subjKey(c.subject)],cn=(cx.find(y=>y.id===c.id)||{}).cancelled;
+    const b=(v,l)=>`<button class="s ${r&&r.v===v?(v==='P'?'ok':v==='A'?'bad':'on'):''}" data-act="attmark" data-d="${d}" data-i="${i}" data-v="${v}">${l}</button>`;
+    const hint=!compact&&!r&&x&&x.t>0?`<div class="mut sm">Now ${(x.pct*100).toFixed(0)}% · if absent → ${Math.round(100*x.a/(x.t+1))}%${100*x.a/(x.t+1)<(S.att.target||75)?' ⚠️ below target':''}</div>`:'';
+    return `<div class="li"><div class="time">${c.start}–${c.end}</div><div class="sp"><b>${esc(c.subject)}</b> ${c.type==='Lab'?'<span class="tag okt">Lab</span>':''}${cn?' <span class="tag badt">Cancelled in notice</span>':''}${hint}</div><div class="row" style="flex-wrap:nowrap">${compact?b('P','✅')+b('A','❌')+b('N','🚫'):b('P','Present')+b('A','Absent')+b('N','No class')}</div></div>`}).join('')}
+function attBanner(){const bad=attStats().filter(x=>x.status==='danger');return bad.length?`<div class="banner b-bad">🚨 Attendance below ${S.att.target||75}%: ${bad.map(x=>esc(x.name)+' ('+(x.pct*100).toFixed(0)+'%)').join(', ')} <span class="sp"></span><button class="s" data-act="go" data-v="attendance">See plan</button></div>`:''}
+function attCard(){const t0=TODAY(),un=dayClasses(t0).filter(c=>!attRec(t0,c)).length;return `<div class="card"><h2>📝 Attendance today${un?` <span class="tag IMPORTANT">${un} to mark</span>`:''}</h2>${attRows(t0,1)||'<div class="empty">No classes today.</div>'}<a href="#attendance" class="sm">All subjects →</a></div>`}
+function viewAtt(){const T=S.att.target||75,L=attStats(),t0=TODAY(),d=attDate,future=d>t0;
+  const unm=[];for(let n=0;n<7;n++){const x=addDays(t0,-n),c=dayClasses(x).filter(k=>!attRec(x,k)).length;if(c)unm.push([x,c])}
+  return `<div class="row"><div><h1>Attendance</h1><p class="sub">Mark daily. Stay at ${T}% or above in <b>every</b> subject.</p></div><span class="sp"></span><label style="margin:0">Target % <input id="atttarget" type="number" min="50" max="95" value="${T}" style="width:80px;display:inline-block"></label></div>
+  ${!S.tt.length?'<div class="card empty">Add a timetable first – attendance is marked per class. <a href="#timetable">Go to timetable</a></div>':''}${attBanner()}
+  <div class="card"><div class="row"><button class="s" data-act="attday" data-n="-1">‹</button><input type="date" id="attdate" value="${d}" max="${t0}" style="width:auto"><button class="s" data-act="attday" data-n="1" ${d>=t0?'disabled':''}>›</button><button class="s" data-act="attday" data-n="0">Today</button><span class="sp"></span><button class="s ok" data-act="attall" data-d="${d}">✔ Mark unmarked as present</button></div>
+  <h3 style="margin-top:12px">${fmtDate(d)}</h3>${future?'<div class="empty">Cannot mark future days.</div>':attRows(d)||'<div class="empty">No classes this day.</div>'}</div>
+  ${unm.length?`<div class="banner b-warn" style="margin-top:12px">📝 Unmarked classes (last 7 days): ${unm.map(([x,c])=>`<button class="s" data-act="attgo" data-d="${x}">${fmtDate(x)} (${c})</button>`).join(' ')}</div>`:''}
+  <h2 style="margin-top:18px">By subject</h2><div class="grid g2">${L.map(x=>`<div class="card"><div class="row"><b>${esc(x.name)}</b><span class="sp"></span><span class="tag ${x.status==='danger'?'URGENT':x.status==='warn'?'IMPORTANT':x.status==='safe'?'okt':'grayt'}">${attBadge(x)}</span></div>
+   <div style="font-size:26px;font-weight:700">${x.pct==null?'–':(x.pct*100).toFixed(1)+'%'} <span class="mut sm">${x.a}/${x.t} classes</span></div>
+   <div class="bar ${x.status}"><i style="width:${x.pct==null?0:Math.min(100,x.pct*100)}%"></i><u style="left:${T}%"></u></div>
+   <p class="sm">${attAdvice(x)}</p><button class="s" data-act="attbase" data-k="${esc(x.k)}">Set starting count</button></div>`).join('')||'<div class="card empty">No subjects yet.</div>'}</div>
+  <p class="mut sm">Percent = attended ÷ conducted. “No class” (cancelled / holiday) is not counted. Already have past attendance? Use “Set starting count”.</p>`}
+function attBaseModal(k){const x=attStats().find(y=>y.k===k);const b=(S.att.base||{})[k]||{a:0,t:0};
+  formModal('Starting count – '+(x?x.name:k),[['a','Classes attended before using CampusFlow',b.a,'number'],['t','Total classes held before',b.t,'number']],v=>{let t=Math.max(0,Math.round(+v.t||0)),a=Math.min(t,Math.max(0,Math.round(+v.a||0)));S.att.base=S.att.base||{};S.att.base[k]={a,t};save()})}
+
 /* assistant */
-function viewAsst(){const qs=['What do I have tomorrow?','What deadlines are coming this week?','Which assignments are pending?','What should I prioritize today?','Did any important notices arrive?','Show me changes to my timetable.','Make a study plan for my upcoming exams.'];
+function viewAsst(){const qs=['What do I have tomorrow?','What deadlines are coming this week?','Which assignments are pending?','What should I prioritize today?','Did any important notices arrive?','Show me changes to my timetable.','Make a study plan for my upcoming exams.','Which subjects are below 75% attendance?','Can I skip tomorrow\'s classes?'];
   return `<h1>AI Assistant</h1><p class="sub">Answers only from your <b>confirmed</b> CampusFlow data.</p>
   <div class="row" style="margin-bottom:12px">${qs.map(q=>`<button class="s" data-act="ask" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
   <div class="chat">${S.chat.map(m=>`<div class="msg ${m.r==='u'?'u':'a'}">${esc(m.t)}</div>`).join('')}${chatBusy?'<div class="msg a"><span class="spin"></span></div>':''}</div>
   <div class="row"><input id="q" placeholder="Ask anything about your schedule…" style="flex:1"><button class="p" data-act="askbtn">Send</button><button data-act="clearchat">Clear</button></div>`}
-function context(){const t0=TODAY();return JSON.stringify({today:t0,weekday:dayOf(t0),timetable:S.tt.map(e=>({day:e.day,start:e.start,end:e.end,subject:e.subject,type:e.type,room:e.room})),tasks:S.tasks.map(t=>({title:t.title,subject:t.subject,deadline:t.deadline,category:t.category,priority:t.priority,done:t.done})),events:S.events.map(e=>({title:e.title,date:e.date,category:e.category})),approvedNotices:S.items.filter(i=>i.status==='approved').map(i=>({title:i.title,priority:effPriority(i),date:i.date})),pendingNoticesUnconfirmed:S.items.filter(i=>i.status==='pending').length,recentTimetableChanges:S.history.filter(h=>/Timetable/.test(h.text)).slice(0,8).map(h=>new Date(h.ts).toISOString().slice(0,10)+' '+h.text),studyPlanNext7Days:Object.entries(computePlan().days).slice(0,7)})}
-function localAnswer(q){q=q.toLowerCase();const t0=TODAY();
+function context(){const t0=TODAY();return JSON.stringify({today:t0,weekday:dayOf(t0),timetable:S.tt.map(e=>({day:e.day,start:e.start,end:e.end,subject:e.subject,type:e.type,room:e.room})),tasks:S.tasks.map(t=>({title:t.title,subject:t.subject,deadline:t.deadline,category:t.category,priority:t.priority,done:t.done})),events:S.events.map(e=>({title:e.title,date:e.date,category:e.category})),approvedNotices:S.items.filter(i=>i.status==='approved').map(i=>({title:i.title,priority:effPriority(i),date:i.date})),pendingNoticesUnconfirmed:S.items.filter(i=>i.status==='pending').length,recentTimetableChanges:S.history.filter(h=>/Timetable/.test(h.text)).slice(0,8).map(h=>new Date(h.ts).toISOString().slice(0,10)+' '+h.text),attendanceTarget:S.att.target||75,attendance:attStats().map(x=>({subject:x.name,attended:x.a,conducted:x.t,percent:x.pct==null?null:+(x.pct*100).toFixed(1),status:x.status,canSkipMore:x.skip,mustAttendInARow:x.need})),studyPlanNext7Days:Object.entries(computePlan().days).slice(0,7)})}
+function localAnswer(q){q=q.toLowerCase();const t0=TODAY();if(/attendance|skip|bunk|75/.test(q))return attSummaryText();
   if(/tomorrow/.test(q)){const c=classesOn(addDays(t0,1)),d=openTasks().filter(t=>t.deadline===addDays(t0,1));return 'Tomorrow ('+dayOf(addDays(t0,1))+'):\n'+(c.map(x=>'• '+x.start+' '+x.subject+(x.cancelled?' (cancelled)':'')).join('\n')||'• No classes')+(d.length?'\nDue: '+d.map(x=>x.title).join(', '):'')}
   if(/deadline|week/.test(q))return openTasks().filter(t=>t.deadline&&diffDays(t0,t.deadline)>=0&&diffDays(t0,t.deadline)<=7).map(t=>'• '+fmtDate(t.deadline)+' – '+t.title).join('\n')||'No deadlines in the next 7 days.';
   if(/pending|assignment/.test(q))return openTasks().filter(t=>t.category==='Assignment').map(t=>'• '+t.title+(t.deadline?' (due '+fmtDate(t.deadline)+')':'')).join('\n')||'No pending assignments.';
@@ -390,16 +432,14 @@ async function askAssistant(q){q=q.trim();if(!q||chatBusy)return;S.chat.push({r:
 function demo(){const T=TODAY();const e=(subject,code,day,start,end,teacher,room,type)=>({id:uid(),subject,code,day,start,end,teacher,room,type});
   S.tt=[e('Mathematics','MA101','Mon','09:00','10:00','Dr. Rao','R-101','Lecture'),e('Physics','PH102','Mon','10:00','11:00','Dr. Iyer','R-204','Lecture'),e('Chemistry Lab','CH103L','Tue','11:00','13:00','Ms. Das','Lab 2','Lab'),e('Computer Science','CS104','Wed','10:00','11:00','Mr. Khan','R-305','Lecture'),e('Mathematics','MA101','Thu','09:00','10:00','Dr. Rao','R-101','Lecture'),e('Physics','PH102','Fri','14:00','15:00','Dr. Iyer','R-204','Lecture')];
   const d=n=>addDays(T,n);S.tasks=[{id:uid(),title:'Physics lab record',subject:'Physics',deadline:d(3),category:'Lab',priority:'High',done:false},{id:uid(),title:'CS mid-term exam',subject:'Computer Science',deadline:d(9),category:'Exam',priority:'High',done:false}];
-  S.events=[{id:uid(),title:'CS mid-term exam',date:d(9),category:'Exam',subject:'Computer Science'}];hist('Demo data loaded');save()}
+  S.events=[{id:uid(),title:'CS mid-term exam',date:d(9),category:'Exam',subject:'Computer Science'}];S.att={rec:{},base:{mathematics:{a:19,t:22},physics:{a:14,t:21},'chemistry lab':{a:8,t:10},'computer science':{a:16,t:20}},target:75};hist('Demo data loaded');save()}
 const EXAMPLE='NOTICE: All students must submit their Maths assignment by 25 November.\nPhysics class on Monday (10 AM) is moved to Tuesday 2 PM, Room 204, from next week.\nChemistry lab on 21 November is cancelled.\nSemester fee last date is 30 November.\nAnnual fest this Saturday evening at the main ground!\nlol who has the memes folder 😂';
 
-let hadSession=false;
 async function activateSession(session){
   const generation=++authGeneration;
-  authSession=session;authError='';cloudError='';
+  authSession=session;cloudError='';
   if(!session){
-    if(hadSession){S=emptyState();try{localStorage.removeItem(KEY)}catch(e){saveWarn=true}}
-    dataReady=true;render();return;
+    dataReady=false;render();return;
   }
   dataReady=false;render();
   try{
@@ -408,7 +448,7 @@ async function activateSession(session){
     if(generation!==authGeneration)return;
     if(data&&data.data)S=Object.assign(emptyState(),data.data);
     else if(previousUserId)S=emptyState();
-    previousUserId=session.user.id;hadSession=true;dataReady=true;render();
+    previousUserId=session.user.id;dataReady=true;render();
     if(!data)save();
   }catch(error){
     if(generation!==authGeneration)return;
@@ -422,24 +462,17 @@ async function boot(){
     if(!response.ok)throw new Error(config.error||'Server configuration is missing.');
     if(!window.supabase)throw new Error('Supabase client library did not load. Check your internet connection.');
     supabaseClient=window.supabase.createClient(config.supabaseUrl,config.supabaseAnonKey);
-    supabaseClient.auth.onAuthStateChange((_event,session)=>{queueMicrotask(()=>activateSession(session))});
+    supabaseClient.auth.onAuthStateChange((_event,session)=>{if(session)queueMicrotask(()=>activateSession(session))});
     const{data,error}=await supabaseClient.auth.getSession();
     if(error)throw error;
-    await activateSession(data.session);
+    let session=data.session;
+    if(!session){
+      const{data:anonymous,error:anonymousError}=await supabaseClient.auth.signInAnonymously();
+      if(anonymousError)throw new Error('Enable Anonymous Sign-Ins in Supabase Auth settings: '+anonymousError.message);
+      session=anonymous.session;
+    }
+    await activateSession(session);
   }catch(error){bootError=error.message||String(error);dataReady=false;render()}
-}
-async function submitAuth(event){
-  event.preventDefault();if(!supabaseClient)return;
-  const form=new FormData(event.target),email=String(form.get('email')||''),password=String(form.get('password')||'');
-  authError='';
-  try{
-    const result=authMode==='signup'
-      ?await supabaseClient.auth.signUp({email,password})
-      :await supabaseClient.auth.signInWithPassword({email,password});
-    if(result.error)throw result.error;
-    if(authMode==='signup'&&!result.data.session)authError='Check your email for a confirmation link, then sign in.';
-  }catch(error){authError=error.message||String(error)}
-  render();
 }
 
 /* ---------- events ---------- */
@@ -450,15 +483,6 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
   const A={
    go(){if(el.dataset.scan){scan={step:1,files:[],draft:[],busy:false,err:'',notes:''}}if(el.dataset.pdf)nz.kind='PDF notice';location.hash=el.dataset.v;render()},
    mclose:closeModal,demo(){demo();render()},remdone(){S.reminders.find(r=>r.id===id).dismissed=true;save();render()},
-   authmode(){authMode=authMode==='login'?'signup':'login';authError='';render()},
-   async signout(){
-     clearTimeout(cloudTimer);await cloudQueue.catch(()=>{});
-     try{
-       if(authSession&&dataReady){cloudError='';await persistCloud();if(cloudError){render();return}}
-       const{error}=await supabaseClient.auth.signOut();if(error)throw error;
-     }catch(error){cloudError='Could not sign out safely: '+error.message;render()}
-   },
-   retryload(){activateSession(authSession)},
    scanstart(){scan={step:1,files:[],draft:[],busy:false,err:'',notes:''};render()},scancancel(){scan={step:0,files:[],draft:[],busy:false,err:'',notes:''};render()},scanrun:runScan,
    scanrm(){scan.draft.splice(+el.dataset.i,1);render()},scanadd(){scan.draft.push({id:uid(),subject:'',code:'',day:'Mon',start:'09:00',end:'10:00',teacher:'',room:'',type:'Lecture'});render()},
    scanconfirm(){const before=JSON.parse(JSON.stringify(S.tt));const n=scan.draft.filter(x=>x.subject&&x.start&&x.end);const cx=conflictsIn(n).size;S.tt=n;
@@ -470,18 +494,23 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
    addtask(){taskModal()},edittask(){taskModal(id)},deltask(){S.tasks=S.tasks.filter(t=>t.id!==id);save();render()},
    calprev(){cal.m--;if(cal.m<0){cal.m=11;cal.y--}render()},calnext(){cal.m++;if(cal.m>11){cal.m=0;cal.y++}render()},calsel(){cal.sel=el.dataset.d;render()},
    ask(){askAssistant(el.dataset.q)},askbtn(){askAssistant($('#q').value)},clearchat(){S.chat=[];save();render()},
+   attmark(){markAtt(el.dataset.d,+el.dataset.i,el.dataset.v);render()},
+   attall(){const d=el.dataset.d;S.att.rec=S.att.rec||{};dayClasses(d).forEach(c=>{if(!attRec(d,c))S.att.rec[attKey(d,c)]={s:c.subject,d,v:'P'}});save();render()},
+   attday(){const n=+el.dataset.n;attDate=n===0?TODAY():addDays(attDate,n);if(attDate>TODAY())attDate=TODAY();render()},
+   attgo(){attDate=el.dataset.d;render()},attbase(){attBaseModal(el.dataset.k)},
    wipe(){modal('<h2>Erase everything?</h2><p>This removes your timetable, tasks and AI history from this browser.</p><div class="row"><button class="d" data-act="wipe2">Yes, erase</button><button data-act="mclose">Cancel</button></div>')},
-   wipe2(){S={tt:[],tasks:[],events:[],items:[],reminders:[],history:[],prefs:{URGENT:true,IMPORTANT:true,INFORMATIONAL:true,IRRELEVANT:false},hours:3,chat:[]};save();closeModal();render()}};
+   wipe2(){S=emptyState();save();closeModal();render()}};
   if(A[a])A[a]()});
 document.addEventListener('change',async ev=>{const t=ev.target;
   if(t.dataset.b){const[i,f]=t.dataset.b.split('.');let v=t.value;if(f==='start'||f==='end')v=normTime(v)||v;scan.draft[+i][f]=v;render()}
   else if(t.id==='f1'){addScanFiles([...t.files])}
   else if(t.id==='nkind'){nz.kind=t.value;nz.text=$('#ntext').value}
   else if(t.id==='nf'){nz.err='';nz.text=$('#ntext').value;nz.busy=true;render();try{for(const f of t.files){if(/\.txt$/i.test(f.name)||f.type==='text/plain'){nz.text+=(nz.text?'\n':'')+await f.text();nz.kind='WhatsApp export'}else{for(const im of await fileToImages(f))nz.files.push(im);if(nz.kind==='Pasted text')nz.kind=f.type==='application/pdf'?'PDF notice':'Screenshot / image'}}}catch(e){nz.err=e.message}nz.busy=false;render()}
+  else if(t.id==='attdate'){if(t.value){attDate=t.value>TODAY()?TODAY():t.value;render()}}
+  else if(t.id==='atttarget'){S.att.target=Math.min(95,Math.max(50,Math.round(+t.value)||75));save();render()}
   else if(t.id==='hours'){S.hours=+t.value;save();render()}});
 document.addEventListener('input',ev=>{if(ev.target.id==='hours'){const h=$('#hv');if(h)h.textContent=ev.target.value}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='q')askAssistant(ev.target.value)});
-document.addEventListener('submit',ev=>{if(ev.target.id==='authForm')submitAuth(ev)});
 document.addEventListener('dragover',ev=>{if(ev.target.closest&&ev.target.closest('#drop1')){ev.preventDefault();ev.target.closest('#drop1').classList.add('over')}});
 document.addEventListener('drop',ev=>{const d=ev.target.closest&&ev.target.closest('#drop1');if(d){ev.preventDefault();addScanFiles([...ev.dataTransfer.files])}});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});

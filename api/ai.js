@@ -18,13 +18,13 @@ module.exports = async function handler(request, response) {
   }
 
   const token = (request.headers.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token) return response.status(401).json({ error: 'Sign in to use the AI service.' });
+  if (!token) return response.status(401).json({ error: 'The demo session is missing. Reload the page and try again.' });
 
   try {
     const authResponse = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`, {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${token}` },
     });
-    if (!authResponse.ok) return response.status(401).json({ error: 'Your session is invalid or expired. Sign in again.' });
+    if (!authResponse.ok) return response.status(401).json({ error: 'The demo session is invalid or expired. Reload the page and try again.' });
 
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
     if (!body || (typeof body.input !== 'string' && !Array.isArray(body.input))) {

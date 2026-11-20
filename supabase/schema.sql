@@ -13,3 +13,7 @@ create policy "Users can manage their own CampusFlow data"
   to authenticated
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.user_data to authenticated;
+notify pgrst, 'reload schema';
