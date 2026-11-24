@@ -314,14 +314,18 @@ function hist(text){try{toast(text)}catch(e){}S.history.unshift({ts:Date.now(),t
 /* ---------- AI ---------- */
 function parseJSON(t){t=String(t).replace(/```json|```/g,'');const a=t.search(/[\[{]/),b=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));if(a<0||b<0)throw new Error('AI gave no JSON');return JSON.parse(t.slice(a,b+1))}
 function blobData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({mimeType:blob.type||'image/jpeg',data:String(reader.result).split(',')[1]});reader.onerror=()=>reject(new Error('Could not read an uploaded image'));reader.readAsDataURL(blob)})}
+const AIK='cf_gemini_key';
+const myAiKey=()=>{try{return localStorage.getItem(AIK)||''}catch(e){return ''}};
 async function ai(input,blobs,json=true){
   if(!supabaseClient||!authSession)throw new Error('The demo session is not ready yet. Reload the page and try again.');
   const{data:{session},error:sessionError}=await supabaseClient.auth.getSession();
   if(sessionError||!session)throw new Error('Your demo session expired. Reload the page to start a new one.');
   const images=blobs&&blobs.length?await Promise.all(blobs.map(blobData)):[];
-  const response=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({input,images})});
+  const hdr={'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},own=myAiKey();if(own)hdr['X-User-Gemini-Key']=own;
+  const response=await fetch('/api/ai',{method:'POST',headers:hdr,body:JSON.stringify({input,images})});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.error||'AI request failed ('+response.status+').');
+  if(result.provider==='groq'&&!window._bk){window._bk=1;toast('⚡ Gemini was busy — a backup AI answered')}
   return json?parseJSON(result.text):result.text}
 function ttCompact(){return S.tt.map(e=>e.day+' '+e.start+'-'+e.end+' '+e.subject+(e.type==='Lab'?' (Lab)':'')+(e.room?' @'+e.room:'')).join('; ')||'(empty)'}
 
@@ -639,7 +643,7 @@ function viewWA(){return `<h1>WhatsApp notices</h1><p class="sub">Honest version
    <div class="card"><h3>✅ 3. Copy &amp; paste</h3><p class="sm">Long-press message → Copy → paste into the analyzer. Fastest for single notices.</p></div>
    <div class="card"><h3>⏳ 4. Forward to intake channel</h3><p class="sm">Would need a CampusFlow-owned WhatsApp Business number and a server. This demo page has no backend, so it is <b>not available</b> here. Planned design: forward → webhook → same analyzer → pending suggestions you approve.</p></div></div>
   <div class="card" style="margin-top:12px"><h3>Privacy</h3><p class="sm">Pasted text and uploaded images are sent to Gemini through CampusFlow's server only when you press Analyze. Your app data is saved to your Supabase account and a browser copy; small source thumbnails may be retained with AI activity records. Remove sensitive names before importing group chats.</p></div>`}
-function viewPrefs(){return `<h1>Preferences</h1><div class="card" style="margin-bottom:12px"><h2>Account</h2><p class="mut sm">${isAnon()?"You are a guest. Save your account to keep your data and use it on other devices.":"Signed in as "+esc((authSession&&authSession.user.email)||"")}</p><div class="row">${isAnon()?'<button class="p" data-act="acsave">Save account</button><button data-act="acsignin">Sign in</button>':''}<button data-act="acout">Sign out</button></div></div><div class="card"><p class="mut">Notification categories live in the <a href="#trust">Trust Center</a>. Reminders are shown in-app on your dashboard (no push notifications in this web demo).</p><button data-act="demo">Load demo data</button> <button class="d" data-act="wipe">Erase all data</button></div>`}
+function viewPrefs(){return `<h1>Preferences</h1><div class="card" style="margin-bottom:12px"><h2>Account</h2><p class="mut sm">${isAnon()?"You are a guest. Save your account to keep your data and use it on other devices.":"Signed in as "+esc((authSession&&authSession.user.email)||"")}</p><div class="row">${isAnon()?'<button class="p" data-act="acsave">Save account</button><button data-act="acsignin">Sign in</button>':''}<button data-act="acout">Sign out</button></div></div><div class="card"><p class="mut">Notification categories live in the <a href="#trust">Trust Center</a>. Reminders are shown in-app on your dashboard (no push notifications in this web demo).</p><button data-act="demo">Load demo data</button> <button class="d" data-act="wipe">Erase all data</button></div><div class="card" style="margin-top:12px"><h2>🔑 Your own AI key <span class="tag ${myAiKey()?'okt':'grayt'}" style="vertical-align:middle">${myAiKey()?'Active':'Optional'}</span></h2><p class="mut sm">The shared free AI quota can run out when many students use it. Add your own free Gemini key and CampusFlow will use it first, so you are never blocked by others. Get one in a minute at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p><label>Gemini API key</label><input type="password" id="aikey" autocomplete="off" placeholder="${myAiKey()?'Saved on this device ('+esc(myAiKey().slice(0,6))+'…'+esc(myAiKey().slice(-4))+')':'AIza…'}"><div class="row" style="margin-top:12px"><button class="p" data-aikey="save">Save key</button>${myAiKey()?'<button class="d" data-aikey="clear">Remove</button>':''}</div><p class="mut sm" style="margin-top:10px">Stored only in this browser. It is sent over HTTPS with your own AI requests and never saved on our servers or in your cloud data.</p></div>`}
 
 /* ---------- modal ---------- */
 function modal(h){$('#mbox').innerHTML=h;$('#modal').classList.add('on')}
@@ -817,6 +821,11 @@ document.addEventListener('click',ev=>{const t=ev.target;
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')drClose()});
 window.addEventListener('hashchange',drClose);
 
+
+document.addEventListener('click',ev=>{const el=ev.target.closest('[data-aikey]');if(!el)return;
+  if(el.dataset.aikey==='save'){const v=($('#aikey').value||'').trim();if(!/^AIza[0-9A-Za-z_-]{30,60}$/.test(v))return toast('That does not look like a Gemini key (it starts with AIza)');try{localStorage.setItem(AIK,v)}catch(e){return toast('Could not save on this device')}toast('✅ Your key is saved on this device')}
+  else{try{localStorage.removeItem(AIK)}catch(e){}toast('Key removed')}
+  render()});
 /* ---------- events ---------- */
 document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a==='tdone'){const t=S.tasks.find(x=>x.id===id);t.done=el.checked;if(t.done)S.reminders.filter(r=>r.taskId===id).forEach(r=>r.dismissed=true);save();return render()}
