@@ -102,6 +102,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;colo
 .g2{grid-template-columns:repeat(auto-fit,minmax(min(310px,100%),1fr))}
 @media(hover:none){.grid>.card:hover,.big:hover,button:hover,.cal .c:hover,.cls:hover,.thumbs img:hover{transform:none;box-shadow:var(--sh)}}
 .credits{margin-top:34px;padding:22px;border:2px solid var(--edge);border-radius:var(--r);background:var(--c2);color:#15121C;text-align:center;box-shadow:6px 6px 0 var(--edge)}.credits-t{font-family:Fredoka,system-ui,sans-serif;font-size:26px;letter-spacing:.05em;margin-bottom:12px}.credits-g{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}.creator{display:flex;align-items:center;gap:12px;text-align:left;background:#FBF9F5;color:#15121C;border:2px solid #15121C;border-radius:var(--r);padding:10px 16px;box-shadow:3px 3px 0 #15121C;min-width:230px;transition:.15s}.creator:hover{transform:translate(-2px,-2px) rotate(-1deg);box-shadow:5px 5px 0 #15121C}.av{width:42px;height:42px;border:2px solid #15121C;border-radius:50%;display:grid;place-items:center;background:var(--c1);color:#fff;font-weight:800;font-size:14px;flex-shrink:0}
+.course{display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 12px;margin-top:18px;padding:9px 20px;border:2px solid #15121C;border-radius:999px;background:#15121C;color:#FBF9F5;font-weight:700;font-size:13.5px}
+.course b{font:600 17px Fredoka,system-ui,sans-serif;color:var(--c2)}
 @media(max-width:760px){
  header{padding:calc(9px + env(safe-area-inset-top)) 12px 9px;flex-wrap:nowrap}#account-status{display:none}h1{font-size:36px}h2{font-size:25px}.hero{padding:24px 20px;margin-right:6px;box-shadow:6px 6px 0 var(--edge)}.hero::after{font-size:60px}main{padding:20px 12px 110px}
  nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--bg);border-top:2px solid var(--edge);padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:4px;margin:0}
@@ -490,9 +492,14 @@ function dash(){
   </div>
   ${creditsHtml()}`}
 
-function creditsHtml(){const C=[['Mangalam','26U020060','M'],['Mehul Nathani','26U020055','MN'],['Ayushi Rana','26U020081','AR']];
-  return `<div class="credits"><div class="credits-t">✨ Created by</div><div class="credits-g">${C.map(([n,id,i])=>`<div class="creator"><span class="av">${i}</span><div><b>${n}</b><div class="mut sm">Scholar No. ${id}</div></div></div>`).join('')}</div></div>`}
-
+function creditsHtml(){
+  const TEAM=[['Mangalam','26U020060','M'],['Mehul Nathani','26U020055','MN'],['Ayushi Rana','26U020081','AR']];
+  const COURSE={name:'FOCP',branch:'CSE',code:'1003'};
+  return `<div class="credits">
+    <div class="credits-t">✨ Created by</div>
+    <div class="credits-g">${TEAM.map(([n,id,i])=>`<div class="creator"><span class="av">${i}</span><div><b>${n}</b><div class="mut sm">Scholar No. ${id}</div></div></div>`).join('')}</div>
+    <div class="course"><span>📚 Built for</span><b>${COURSE.name}</b><span>${COURSE.branch} · ${COURSE.code}</span></div>
+  </div>`}
 /* timetable */
 function conflictsIn(list){const bad=new Set();list.forEach((a,i)=>list.forEach((b,j)=>{if(i<j&&a.day===b.day&&toMin(a.start)<toMin(b.end)&&toMin(b.start)<toMin(a.end)){bad.add(i);bad.add(j)}}));return bad}
 function diffTT(oldL,newL){const o=oldL.map(x=>({...x,u:0})),out=[];const key=e=>(e.subject||'').toLowerCase().trim();
